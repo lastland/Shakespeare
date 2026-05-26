@@ -1,0 +1,179 @@
+// Shakespeare Programming Language grammar (lark, Earley + dynamic_complete lexer).
+//
+// Design notes (see ADR-0002):
+//   * All keywords are NAMED, case-insensitive terminals declared in the terminals section
+//     below and referenced by name in the rules (no bare "and"i strings inline in rules).
+//     Structural punctuation ([ ] : , . ! ?) stays inline.
+//   * A single generic lowercase WORD terminal carries all vocabulary (nouns/adjectives);
+//     classification + value computation happen later in the backend analyzer — WORD enumerates
+//     no keywords.
+//   * Pronouns and `expression` outrank `constant` by RULE PRIORITY so that, under the
+//     dynamic_complete lexer (which explores every tokenisation), `you` resolves to a pronoun and
+//     `the sum of ...` to an operation instead of being swallowed as a long WORD+ constant.
+//   * Free-text comments are a single greedy COMMENT terminal; the dynamic lexer only offers it
+//     in comment positions.
+//
+// Phase 1 scope: declarations, stage directions, assignment, the common arithmetic
+// (sum/difference/product/quotient/remainder/twice/square), all four I/O forms, comparison
+// questions + If so/If not, and act/scene gotos. Stacks and square-root/cube are phase 2.
+
+// ========================= rules =========================
+
+play: COMMENT "." personae act+
+
+personae: persona+
+persona: name "," COMMENT "."
+
+act: ACT roman ":" COMMENT "." scene+
+scene: SCENE roman ":" COMMENT "." line*
+
+?line: stage_direction | dialogue
+
+stage_direction: "[" _stage "]"
+_stage: enter | exeunt | exit
+enter: ENTER name (AND name)*
+exit: EXIT name
+exeunt: EXEUNT ( name (AND name)* )?
+
+dialogue: name ":" sentence+
+sentence: statement ("." | "!" | "?")
+
+?statement: assignment
+          | open_stmt
+          | speak_stmt
+          | listen_stmt
+          | question
+          | conditional
+          | goto
+
+// Assignment targets the addressee (second person). `be` and the "as ADJ as" simile are both
+// optional flavour (the reference grammar allows "Thou nothing." with neither).
+assignment: _second _be? (AS WORD AS)? value
+
+_second: YOU | THEE | THOU | THYSELF | YOURSELF
+_be: AM | ARE | ART | BE | IS
+_poss: YOUR | THY
+
+open_stmt: OPEN _poss HEART        -> output_number
+         | OPEN _poss MIND         -> input_char
+speak_stmt: SPEAK _poss MIND       -> output_char
+listen_stmt: LISTEN TO _poss HEART -> input_number
+
+question: _be value comparison value
+comparison: comp_kind      -> cmp_positive
+          | NOT comp_kind  -> cmp_negated
+comp_kind: AS WORD AS  -> eq
+         | BETTER THAN -> gt
+         | WORSE THAN  -> lt
+
+conditional: IF SO ","? statement  -> if_so
+           | IF NOT ","? statement -> if_not
+
+goto: _lead (RETURN | PROCEED) TO target
+_lead: LET US | WE SHALL | WE MUST
+target: SCENE roman -> scene_target
+      | ACT roman   -> act_target
+
+?value: first_person_value
+      | second_person_value
+      | expression
+      | constant
+
+first_person_value.2: I | ME | MYSELF
+second_person_value.2: YOU | THEE | THOU | THYSELF | YOURSELF
+
+expression.2: THE SUM OF value AND value                              -> sum
+            | THE DIFFERENCE BETWEEN value AND value                  -> difference
+            | THE PRODUCT OF value AND value                          -> product
+            | THE QUOTIENT BETWEEN value AND value                    -> quotient
+            | THE REMAINDER OF THE QUOTIENT BETWEEN value AND value   -> remainder
+            | TWICE value                                             -> twice
+            | THE SQUARE OF value                                     -> square
+
+constant: _article? WORD+
+_article: A | AN | THE
+
+name: NAME
+roman: ROMAN
+
+// ========================= terminals =========================
+
+// Keywords are word-boundaried: the trailing `(?![a-z])` stops a keyword from matching a prefix
+// of a longer vocabulary word (e.g. "an" must not match the start of "angel", "sum" must not
+// match "summer"). This is proper keyword reservation and is why WORD can stay fully generic.
+
+// --- structure / control flow ---
+ACT: /act(?![a-z])/i
+SCENE: /scene(?![a-z])/i
+ENTER: /enter(?![a-z])/i
+EXIT: /exit(?![a-z])/i
+EXEUNT: /exeunt(?![a-z])/i
+IF: /if(?![a-z])/i
+SO: /so(?![a-z])/i
+NOT: /not(?![a-z])/i
+LET: /let(?![a-z])/i
+US: /us(?![a-z])/i
+WE: /we(?![a-z])/i
+SHALL: /shall(?![a-z])/i
+MUST: /must(?![a-z])/i
+RETURN: /return(?![a-z])/i
+PROCEED: /proceed(?![a-z])/i
+TO: /to(?![a-z])/i
+
+// --- be-verbs, pronouns, possessives, articles ---
+AM: /am(?![a-z])/i
+ARE: /are(?![a-z])/i
+ART: /art(?![a-z])/i
+BE: /be(?![a-z])/i
+IS: /is(?![a-z])/i
+I: /i(?![a-z])/i
+ME: /me(?![a-z])/i
+MYSELF: /myself(?![a-z])/i
+YOU: /you(?![a-z])/i
+THEE: /thee(?![a-z])/i
+THOU: /thou(?![a-z])/i
+THYSELF: /thyself(?![a-z])/i
+YOURSELF: /yourself(?![a-z])/i
+YOUR: /your(?![a-z])/i
+THY: /thy(?![a-z])/i
+A: /a(?![a-z])/i
+AN: /an(?![a-z])/i
+THE: /the(?![a-z])/i
+
+// --- arithmetic ---
+OF: /of(?![a-z])/i
+SUM: /sum(?![a-z])/i
+DIFFERENCE: /difference(?![a-z])/i
+BETWEEN: /between(?![a-z])/i
+PRODUCT: /product(?![a-z])/i
+QUOTIENT: /quotient(?![a-z])/i
+REMAINDER: /remainder(?![a-z])/i
+TWICE: /twice(?![a-z])/i
+SQUARE: /square(?![a-z])/i
+AND: /and(?![a-z])/i
+
+// --- comparison ---
+AS: /as(?![a-z])/i
+THAN: /than(?![a-z])/i
+BETTER: /better(?![a-z])/i
+WORSE: /worse(?![a-z])/i
+
+// --- I/O ---
+OPEN: /open(?![a-z])/i
+SPEAK: /speak(?![a-z])/i
+LISTEN: /listen(?![a-z])/i
+HEART: /heart(?![a-z])/i
+MIND: /mind(?![a-z])/i
+
+// --- vocabulary + structural regex terminals ---
+// A character reference: capitalized words, optionally joined by lowercase "of"
+// (e.g. "Romeo", "Lady Macbeth", "John of Gaunt"). One token so the connective is preserved.
+NAME: /[A-Z][a-z]+(?:[ \t]+(?:of[ \t]+)?[A-Z][a-z]+)*/
+ROMAN: /[IVXLCDM]+/
+// A vocabulary word (noun/adjective) — fully generic, no keywords baked in (ADR-0002).
+WORD: /[a-z]+/
+// Free text for the title, persona descriptions, and act/scene titles.
+COMMENT.5: /[^.!?\[\]\n]+/
+
+%import common.WS
+%ignore WS

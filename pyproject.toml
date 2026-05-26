@@ -1,0 +1,44 @@
+[project]
+name = "spl"
+version = "0.1.0"
+description = "A typed-Python interpreter for the Shakespeare Programming Language"
+readme = "README.md"
+authors = [
+    { name = "Yao Li", email = "hnkfliyao@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "lark>=1.1",
+]
+
+[project.scripts]
+spl = "spl.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.11.14,<0.12.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "ruff>=0.6",
+    "pyright>=1.1.380",
+]
+
+[tool.ruff]
+target-version = "py313"
+src = ["src", "tests"]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.pyright]
+include = ["src", "tests"]
+pythonVersion = "3.13"
+typeCheckingMode = "strict"
+reportMissingTypeStubs = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
