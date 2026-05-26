@@ -72,16 +72,6 @@ def _words(children: list[object]) -> list[str]:
     return [str(c) for c in children if isinstance(c, Token) and c.type in ("WORD", "NAME")]
 
 
-def _comparison(children: list[object]) -> str | MoreComparative:
-    # The comparison value emitted by a comp_kind rule: a plain "eq"/"gt"/"lt" string, or a
-    # MoreComparative marker. The only other child here is the NOT keyword token (cmp_negated).
-    return next(
-        c
-        for c in children
-        if isinstance(c, MoreComparative) or (isinstance(c, str) and not isinstance(c, Token))
-    )
-
-
 def _int(children: list[object]) -> int:
     return next(c for c in children if isinstance(c, int))
 
@@ -146,12 +136,6 @@ class ToAst(Transformer[Token, object]):
         word = next(c for c in children if isinstance(c, Token) and c.type == "WORD")
         return MoreComparative(str(word))
 
-    def cmp_positive(self, children: list[object]) -> tuple[str | MoreComparative, bool]:
-        return (_comparison(children), False)
-
-    def cmp_negated(self, children: list[object]) -> tuple[str | MoreComparative, bool]:
-        return (_comparison(children), True)
-
     # ---- statements ----
 
     def assignment(self, children: list[object]) -> Assignment:
@@ -171,11 +155,15 @@ class ToAst(Transformer[Token, object]):
 
     def question(self, children: list[object]) -> Question:
         left, right = _exprs(children)
-        # The comparison result (a (kind, negated) tuple) is the child that is neither a token
-        # nor an expression. Found by exclusion so its element types stay known to the checker.
-        comparison_obj = next(c for c in children if not isinstance(c, (Token, *_EXPR_TYPES)))
-        comparison, negated = cast("tuple[str | MoreComparative, bool]", comparison_obj)
-        return Question(left, right, comparison, negated)
+        # The comparison result is the child that is neither a be-verb Token nor an expression: a
+        # plain "eq"/"gt"/"lt" string (a `str` but not a `Token`) or a `MoreComparative` marker.
+        # There is no negation any more (issue 13) — a `not` inside a question never parses.
+        comparison = next(
+            c
+            for c in children
+            if isinstance(c, MoreComparative) or (isinstance(c, str) and not isinstance(c, Token))
+        )
+        return Question(left, right, comparison)
 
     def if_so(self, children: list[object]) -> Conditional:
         return Conditional(

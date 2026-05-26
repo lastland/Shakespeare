@@ -120,13 +120,14 @@ class Question:
 
     `comparison` is one of `"eq"`, `"gt"`, `"lt"` after analysis. The frontend may instead emit a
     `MoreComparative` marker for `more <adjective> than`, which the analyzer resolves to a string.
-    `negated` flips the outcome.
+
+    There is no negation: the reference grammar has no negated questions, so we dropped that form
+    (issue 13). A `not` inside a question is a parse error; `not` survives only in `If not, ...`.
     """
 
     left: Expr
     right: Expr
     comparison: str | MoreComparative
-    negated: bool
 
 
 @dataclass(frozen=True)

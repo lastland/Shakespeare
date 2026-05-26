@@ -179,11 +179,6 @@ def test_more_negative_adjective_is_less_than() -> None:
     assert _question_branch("more rotten than", romeo="a happy cat", juliet="a cat") == "1"
 
 
-def test_negated_better_than_inverts() -> None:
-    # you=1 ; "a happy cat"=2 ; 1 > 2 is false, negated -> true -> prints 1
-    assert _question_branch("not better than", romeo="a happy cat", juliet="a cat") == "1"
-
-
 # ---- stacks: Remember / Recall (issue 02) ----
 
 

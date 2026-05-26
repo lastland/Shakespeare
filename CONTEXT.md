@@ -50,10 +50,12 @@ _Avoid_: literal, number, term
 
 **Question**:
 A comparison line that sets a boolean. The comparison is a positive comparative ("better",
-"bigger", "fresher", "friendlier", "nicer", "jollier", or "more ADJ") → greater-than; a negative
-comparative ("worse", "punier", "smaller", or "more NEGATIVE-ADJ") → less-than; or "as ADJ as" →
-equality. "not" inverts any of these. The following "If so" / "If not" line executes conditionally
-on the most recent Question's result.
+"bigger", "fresher", "friendlier", "nicer", "jollier", or "more POSITIVE-ADJ") → greater-than; a
+negative comparative ("worse", "punier", "smaller", or "more NEGATIVE-ADJ") → less-than; or
+"as ADJ as" → equality. "more NEUTRAL-ADJ" is rejected (issue 15). There are no negated questions:
+a Question containing "not" is a parse error (issue 13); "not" survives only in the separate
+"If not" conditional. The following "If so" / "If not" line executes conditionally on the most
+recent Question's result.
 _Avoid_: condition, test, predicate
 
 **Stack**:

@@ -143,12 +143,12 @@ def test_io_statements() -> None:
     assert parse("Open your mind.", start="sentence") == InputChar()
 
 
-def test_question_relative_and_negated_equality() -> None:
+def test_question_relative_and_equality() -> None:
     assert parse("Am I better than you?", start="sentence") == Question(
-        PronounValue("first"), PronounValue("second"), "gt", False
+        PronounValue("first"), PronounValue("second"), "gt"
     )
-    assert parse("Are you not as good as me?", start="sentence") == Question(
-        PronounValue("second"), PronounValue("first"), "eq", True
+    assert parse("Are you as good as me?", start="sentence") == Question(
+        PronounValue("second"), PronounValue("first"), "eq"
     )
 
 
@@ -158,37 +158,45 @@ def test_question_relative_and_negated_equality() -> None:
 )
 def test_positive_comparatives_parse_to_gt(word: str) -> None:
     assert parse(f"Am I {word} than you?", start="sentence") == Question(
-        PronounValue("first"), PronounValue("second"), "gt", False
+        PronounValue("first"), PronounValue("second"), "gt"
     )
 
 
 @pytest.mark.parametrize("word", ["worse", "punier", "smaller"])
 def test_negative_comparatives_parse_to_lt(word: str) -> None:
     assert parse(f"Am I {word} than you?", start="sentence") == Question(
-        PronounValue("first"), PronounValue("second"), "lt", False
+        PronounValue("first"), PronounValue("second"), "lt"
     )
 
 
 def test_neutral_comparative_parses_to_eq() -> None:
     assert parse("Am I as good as you?", start="sentence") == Question(
-        PronounValue("first"), PronounValue("second"), "eq", False
+        PronounValue("first"), PronounValue("second"), "eq"
     )
 
 
-def test_negated_negative_comparative() -> None:
-    assert parse("Am I not worse than you?", start="sentence") == Question(
-        PronounValue("first"), PronounValue("second"), "lt", True
-    )
+@pytest.mark.parametrize(
+    "source",
+    [
+        # Negated questions were dropped (issue 13): a `not` inside a question no longer parses,
+        # regardless of operand kind (pronoun vs. character/noun-phrase left operand).
+        "Are you not as good as me?",
+        "Am I not worse than you?",
+        "Am I not more rotten than you?",
+        "Is Romeo not worse than Juliet?",
+        "Is the King not worse than Juliet?",
+    ],
+)
+def test_negated_question_does_not_parse(source: str) -> None:
+    with pytest.raises(ParseError):
+        parse(source, start="sentence")
 
 
 def test_more_adjective_than_carries_unresolved_adjective() -> None:
     # `more <adj> than` cannot be classified gt/lt without the vocabulary, so the frontend keeps
     # the raw adjective in a MoreComparative marker; the analyzer resolves it (see analyzer tests).
     assert parse("Am I more cunning than you?", start="sentence") == Question(
-        PronounValue("first"), PronounValue("second"), MoreComparative("cunning"), False
-    )
-    assert parse("Am I not more rotten than you?", start="sentence") == Question(
-        PronounValue("first"), PronounValue("second"), MoreComparative("rotten"), True
+        PronounValue("first"), PronounValue("second"), MoreComparative("cunning")
     )
 
 

@@ -70,8 +70,11 @@ speak_stmt: SPEAK _poss MIND       -> output_char
 listen_stmt: LISTEN TO _poss HEART -> input_number
 
 question: _be value comparison value
-comparison: comp_kind      -> cmp_positive
-          | NOT comp_kind  -> cmp_negated
+// A comparison is just its comp_kind (inlined via `?`, so the comp_kind result reaches `question`
+// directly). The reference grammar has no negated questions; we dropped the `NOT comp_kind`
+// alternative (issue 13) so a `not` inside a question fails to parse for every operand kind. (The
+// NOT terminal stays in the grammar for the separate `If not, ...` conditional.)
+?comparison: comp_kind
 // Comparatives (issue 03). Bare positive words -> gt, bare negative words -> lt, `as ADJ as` ->
 // eq, and `more WORD than` whose direction depends on the adjective's sign (resolved by the
 // analyzer, since the grammar carries no vocabulary — ADR-0002). "less" is intentionally omitted.
@@ -242,9 +245,16 @@ RECALL: /recall(?![a-z])/i
 // (e.g. "Romeo", "Lady Macbeth", "John of Gaunt"). One token so the connective is preserved.
 NAME: /[A-Z][a-z]+(?:[ \t]+(?:of[ \t]+)?[A-Z][a-z]+)*/
 ROMAN: /[IVXLCDM]+/
-// A vocabulary word (noun/adjective) — fully generic, no keywords baked in (ADR-0002).
+// A vocabulary word (noun/adjective) — generic, no keywords baked in (ADR-0002).
 // Allows internal apostrophes/hyphens so words like "summer's" and "half-witted" are one token.
-WORD: /[a-z]+(?:['-][a-z]+)*/
+// `not` is RESERVED out of WORD (leading `(?!not(?![a-z]))`): it is never SPL vocabulary, and with
+// negated questions dropped (issue 13) it has no role in a value/comparison. Without this, the
+// dynamic lexer would offer `not` as a WORD and the greedy `constant` rule would swallow it (e.g.
+// `you not` / `Romeo not`), so `Is X not worse than Y?` would parse to an un-negated question
+// instead of failing — the silent-drop bug. The word-boundary `(?![a-z])` keeps words that merely
+// CONTAIN "not" (`nothing`, `another`, `notch`) lexing normally. `not` still lexes as the NOT
+// keyword for the separate `If not, ...` conditional.
+WORD: /(?!not(?![a-z]))[a-z]+(?:['-][a-z]+)*/
 // Free text for the title, persona descriptions, and act/scene titles. Runs until the next
 // sentence terminator REGARDLESS of line breaks (issue 01): SPL comments — including persona
 // descriptions and act/scene titles — may wrap across lines, so newlines are NOT excluded. A

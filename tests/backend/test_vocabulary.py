@@ -11,6 +11,8 @@ def test_lists_are_non_empty() -> None:
     assert vocab.neutral_nouns
     assert vocab.negative_nouns
     assert vocab.adjectives
+    assert vocab.positive_adjectives
+    assert vocab.negative_adjectives
     assert vocab.character_names
 
 
@@ -44,6 +46,25 @@ def test_negative_adjectives_are_a_subset() -> None:
     assert not vocab.is_negative_adjective("flower")  # not an adjective
     # Every negative adjective is also a (general) adjective.
     assert vocab.negative_adjectives <= vocab.adjectives
+
+
+def test_positive_adjectives_are_a_subset() -> None:
+    vocab = load()
+    assert vocab.is_positive_adjective("cunning")  # positive
+    assert vocab.is_positive_adjective("CUNNING")  # case-insensitive
+    assert not vocab.is_positive_adjective("rotten")  # negative
+    assert not vocab.is_positive_adjective("big")  # neutral
+    assert not vocab.is_positive_adjective("flower")  # not an adjective
+    # Every positive adjective is also a (general) adjective.
+    assert vocab.positive_adjectives <= vocab.adjectives
+
+
+def test_positive_neutral_negative_partition_the_adjectives() -> None:
+    # The reference's three adjective lists partition `adjectives` exactly: positive and negative
+    # are disjoint, and the neutral adjectives are the remainder (issue 15).
+    vocab = load()
+    assert not (vocab.positive_adjectives & vocab.negative_adjectives)
+    assert vocab.positive_adjectives | vocab.negative_adjectives <= vocab.adjectives
 
 
 def test_character_names() -> None:

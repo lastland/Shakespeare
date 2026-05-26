@@ -12,13 +12,15 @@ the oracle on all eight committed programs (`hi`, `hello_world`, `greeting`, `ec
 Issues [13](13-negated-question-drops-negation.md)–[22](22-stale-question-branch-docstring.md) are
 follow-ups filed from the Phase 2 code review — gaps in the features that issues 01/02/03/09/12
 delivered. The six agent-ready (AFK) items are **resolved** (fixed by coding agents, all suites
-green); four conformance/semantics decisions remain `ready-for-human` (13, 15, 18, 19).
+green), and the maintainer's decisions on 13 (drop negated questions) and 15 (reject neutral-after-
+`more`) are now **resolved** too (see ADR-0004). Two conformance decisions remain `ready-for-human`
+(18, 19).
 
 ## Phase 2 code-review follow-ups
 
 Comparisons (gaps in [03](03-richer-comparatives.md)):
-- [13](13-negated-question-drops-negation.md) — negated question drops the negation on a non-pronoun left operand — **ready-for-human**
-- [15](15-more-neutral-adjective-comparative.md) — `more <neutral adjective> than` resolves to `gt` instead of being rejected — **ready-for-human**
+- [13](13-negated-question-drops-negation.md) — negated question drops the negation on a non-pronoun left operand — **resolved** (decision (b): dropped negated questions entirely; `not` reserved out of `WORD` — ADR-0004)
+- [15](15-more-neutral-adjective-comparative.md) — `more <neutral adjective> than` resolves to `gt` instead of being rejected — **resolved** (decision: reject; added `positive_adjectives` so neutral-after-`more` raises — ADR-0004)
 
 Parsing fidelity:
 - [14](14-breakpoints-dropped-from-ast.md) — `[A pause]` breakpoints dropped from the scene AST — **resolved** (added `Breakpoint` to the scene line allow-list)

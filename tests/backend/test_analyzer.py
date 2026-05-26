@@ -140,11 +140,13 @@ def test_more_positive_adjective_resolves_to_gt() -> None:
     assert question.comparison == "gt"
 
 
-def test_more_neutral_adjective_resolves_to_gt() -> None:
-    # "big" is a neutral adjective -> greater-than (our documented superset over the reference,
-    # which only allows positive adjectives after "more").
-    question = _first_question("Romeo: Am I more big than you?")
-    assert question.comparison == "gt"
+@pytest.mark.parametrize("word", ["big", "huge", "tiny", "little", "small"])
+def test_more_neutral_adjective_is_rejected(word: str) -> None:
+    # The reference admits `more` only with a positive/negative adjective; a neutral adjective
+    # there is rejected, the same strict way an unknown adjective is (issue 15). Previously these
+    # fell into the "else -> gt" branch (e.g. `more tiny than` -> gt, backwards).
+    with pytest.raises(AnalysisError, match="unknown adjective"):
+        _analyze(f"Romeo: Am I more {word} than you?")
 
 
 def test_more_negative_adjective_resolves_to_lt() -> None:

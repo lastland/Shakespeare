@@ -103,9 +103,9 @@ class Interpreter:
                 self._addressed(speaker).value = self.io.read_number()
             case InputChar():
                 self._addressed(speaker).value = self.io.read_char()
-            case Question(left, right, comparison, negated):
+            case Question(left, right, comparison):
                 self.last_question = self._compare(
-                    self._eval(speaker, left), self._eval(speaker, right), comparison, negated
+                    self._eval(speaker, left), self._eval(speaker, right), comparison
                 )
             case Conditional(on_true, body):
                 if self.last_question is None:
@@ -178,21 +178,18 @@ class Interpreter:
             case _:  # pragma: no cover
                 raise AssertionError(f"unknown unary operator {op!r}")
 
-    def _compare(
-        self, left: int, right: int, comparison: str | MoreComparative, negated: bool
-    ) -> bool:
+    def _compare(self, left: int, right: int, comparison: str | MoreComparative) -> bool:
         match comparison:
             case "eq":
-                result = left == right
+                return left == right
             case "gt":
-                result = left > right
+                return left > right
             case "lt":
-                result = left < right
+                return left < right
             case MoreComparative():  # pragma: no cover - analyzer resolves every MoreComparative
                 raise AssertionError("comparison was not resolved by the analyzer")
             case _:  # pragma: no cover
                 raise AssertionError(f"unknown comparison {comparison!r}")
-        return not result if negated else result
 
     # ---- stage helpers ----
 

@@ -132,12 +132,11 @@ class _Analyzer:
         match stmt:
             case Assignment(value):
                 return Assignment(self._fold_expr(value))
-            case Question(left, right, comparison, negated):
+            case Question(left, right, comparison):
                 return Question(
                     self._fold_expr(left),
                     self._fold_expr(right),
                     self._resolve_comparison(comparison),
-                    negated,
                 )
             case Conditional(on_true, body):
                 return Conditional(on_true, self._fold_statement(body))
@@ -160,15 +159,19 @@ class _Analyzer:
     def _resolve_comparison(self, comparison: str | MoreComparative) -> str:
         """Resolve a `more <adjective> than` marker to "gt"/"lt"; pass plain strings through.
 
-        Direction follows the adjective's sign (mirrors how constants classify nouns): a negative
-        adjective means less-than, any other adjective means greater-than. An unknown adjective
-        raises, matching the strict treatment of unknown adjectives in constants (ADR-0001).
+        Direction follows the adjective's sign: a negative adjective means less-than, a positive
+        adjective means greater-than. A neutral adjective is rejected (raises), matching the
+        reference, which admits `more` only with a positive/negative adjective (issue 15); an
+        unknown (non-adjective) word also raises, matching the strict treatment of unknown
+        adjectives in constants (ADR-0001).
         """
         if isinstance(comparison, MoreComparative):
             adjective = comparison.adjective
-            if not self.vocab.is_adjective(adjective):
-                raise AnalysisError(f"unknown adjective: {adjective!r}")
-            return "lt" if self.vocab.is_negative_adjective(adjective) else "gt"
+            if self.vocab.is_negative_adjective(adjective):
+                return "lt"
+            if self.vocab.is_positive_adjective(adjective):
+                return "gt"
+            raise AnalysisError(f"unknown adjective: {adjective!r}")
         return comparison
 
     def _fold_constant(self, words: tuple[str, ...]) -> Expr:
