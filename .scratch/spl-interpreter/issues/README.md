@@ -13,8 +13,8 @@ Issues [13](13-negated-question-drops-negation.md)–[22](22-stale-question-bran
 follow-ups filed from the Phase 2 code review — gaps in the features that issues 01/02/03/09/12
 delivered. The six agent-ready (AFK) items are **resolved** (fixed by coding agents, all suites
 green), and the maintainer's decisions on 13 (drop negated questions) and 15 (reject neutral-after-
-`more`) are now **resolved** too (see ADR-0004). Two conformance decisions remain `ready-for-human`
-(18, 19).
+`more`) are now **resolved** too (see ADR-0004). One conformance decision remains `ready-for-human`
+(18).
 
 ## Phase 2 code-review follow-ups
 
@@ -27,7 +27,7 @@ Parsing fidelity:
 
 COMMENT terminator vs. the reference's `text_before_punctuation` (gaps around [01](01-multiline-comments-break-parsing.md)/[02](02-implement-stacks.md)):
 - [17](17-recall-comment-executes-statements.md) — Recall comment text after a `?` is executed as statements — **resolved** (dedicated `RECALL_COMMENT` terminal spanning `?` but stopping at `!`/`.`/`[`/`]`; shared `COMMENT` untouched, so 19 stays open)
-- [19](19-title-question-mark-terminator.md) — title/section labels accept `?` as a terminator; the reference does not — **ready-for-human**
+- [19](19-title-question-mark-terminator.md) — title/section labels accept `?` as a terminator; the reference does not — **resolved** (decision: keep `?` as a friendly superset; documented divergence — ADR-0005)
 
 Input I/O (gaps in [09](09-input-error-semantics.md)):
 - [16](16-read-number-crlf-handling.md) — `read_number` leaks a carriage return on CRLF input — **resolved** (trailing `\r\n` consumed as one terminator)

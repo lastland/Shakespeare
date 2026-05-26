@@ -84,6 +84,10 @@ This interpreter is cross-checked against the de-facto reference,
   following the official report; `shakespearelang` allows scenes only.
 - **Exact integer division/√**: we truncate toward zero with exact integers; the reference uses
   float division, which loses precision above 2⁵³. Same sign convention, more precise.
+- **Label terminators accept `?`** ([ADR-0005](docs/adr/0005-title-section-label-terminators.md)): a
+  title or Act/Scene/persona label may end with `?` as well as `!`/`.`. The reference admits only
+  `!`/`.` for labels (it reads past a `?` as label text), so this is a friendly superset. (Unrelated
+  to `?` ending a *question*, which is reference-standard.)
 
 **Known gaps:** the `factorial` operator (`the factorial of`) is not implemented (the reference has
 it; no sample program uses it).

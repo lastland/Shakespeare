@@ -1,6 +1,6 @@
 # Title/section labels accept `?` as a terminator; the reference does not
 
-Status: ready-for-human
+Status: resolved
 
 ## Parent
 
@@ -36,3 +36,22 @@ the reference reads past the `?` and swallows the following first persona into t
 ## Blocked by
 
 None - can start immediately. (Related: shares the COMMENT `?` root cause with [17](17-recall-comment-executes-statements.md).)
+
+## Decision
+
+Keep `?` as a label terminator (option a) — a friendly superset over the reference.
+
+## Resolution
+
+Kept as-is: `_title_end` already accepts `.`/`!`/`?` and the shared `COMMENT` terminal stops at `?`,
+so a title / persona / Act / Scene label may end with `?`. `.` and `!` match the reference; `?` is
+our intentional superset (the reference's `text_before_punctuation` treats `?` as label text and
+reads past it — demonstrated: a `?`-terminated scene label makes the oracle swallow the scene body
+into the label name, while we terminate the label at `?`). The `?`-as-question-terminator
+(`Am I better than you?`) is unrelated and fully reference-conformant; this decision concerns only
+`?` ending a *label*. Recorded in ADR-0005 and the README's intentional-divergences list, and
+registered as the `title-question-terminator` category in the differential harness. Decoupled from
+[17](17-recall-comment-executes-statements.md) by that issue's separate `RECALL_COMMENT` terminal,
+so Recall comments stay reference-conformant (span `?`) while labels keep the `?` terminator. The
+existing parser test `test_title_and_section_terminators_allow_bang_and_question` locks the
+behaviour in. No code change; full + differential suites green (8/8).

@@ -274,7 +274,9 @@ def test_multiline_persona_description_parses() -> None:
 
 # ---- title / section terminators accept ! ? . (FIX A) ----
 
-# The reference EBNF lets a title or section label end with any sentence terminator, not just ".".
+# A title or section label may end with ".", "!", or "?". The "." and "!" match the reference EBNF
+# (text_before_punctuation ("!" | ".")); "?" is our intentional superset (ADR-0005) — the reference
+# reads past a "?" as label text. (Unrelated to "?" ending a question, which is reference-standard.)
 _BANGED_TITLES_PLAY = """A Test!
 
 Romeo, a person?

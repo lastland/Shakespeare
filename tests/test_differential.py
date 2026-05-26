@@ -62,6 +62,7 @@ DANGLING_CONDITIONAL = "dangling-conditional"  # ADR-0001: we raise; oracle runs
 ACT_TARGET_GOTO = "act-target-goto"  # ADR-0002: we accept; oracle parse-errors.
 EXACT_INTEGER_DIVISION = "exact-integer-division"  # ADR-0001/0003: we are exact; oracle uses float.
 SIGNED_OR_WHITESPACE_NUMERIC_INPUT = "signed-or-whitespace-numeric-input"  # ADR-0003: we accept.
+TITLE_QUESTION_TERMINATOR = "title-question-terminator"  # ADR-0005: we end a label on '?'.
 
 # No current program exercises a divergence, so each maps to no allowed category and the
 # cross-check is strict equality for all eight. New programs that intentionally diverge get listed
