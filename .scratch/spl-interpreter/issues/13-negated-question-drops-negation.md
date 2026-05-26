@@ -28,6 +28,10 @@ Repro (verified): `Is Romeo not worse than Juliet?` parses to
 `AnalysisError: unknown noun: 'Romeo not'`. The pronoun form `Are you not worse than Juliet?`
 correctly yields `negated=True`, which is why the existing tests (all pronoun-first) pass.
 
+## Decision
+
+b
+
 ## Acceptance criteria
 
 - [ ] Decision recorded (keep-and-fix vs. drop negated questions); ADR added/updated if the superset is kept.

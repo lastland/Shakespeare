@@ -25,6 +25,10 @@ Likely an ADR update alongside the other conformance decisions ([07](07-goto-tar
 Repro (verified): `Am I more tiny than you?` resolves to `comparison='gt'`; the reference
 `shakespeare run` parse-errors on `more huge than`.
 
+## Decision
+
+Reject
+
 ## Acceptance criteria
 
 - [ ] Decision recorded (reject vs. documented superset); ADR added/updated.
