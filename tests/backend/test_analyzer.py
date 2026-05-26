@@ -70,9 +70,38 @@ def test_articled_character_name_in_value_folds_to_reference() -> None:
 def test_article_before_undeclared_capitalized_word_stays_a_constant() -> None:
     # Negative case: when the capitalized word after an article does NOT name a declared character,
     # it must fold as a constant noun, not a character reference. "King" is a positive noun (=1);
-    # here no character "The King" is declared, so "the King" stays the constant 1.
+    # here no character "The King" is declared, so "the King" stays the constant 1. The leading-the
+    # retry fails to find a character and falls through to the noun value rather than erroring.
     program = _analyze("Romeo: You are the King.")
     assert _first_statement(program) == Assignment(Number(1))
+
+
+def test_non_the_determiner_does_not_resolve_to_articled_character() -> None:
+    # Issue 18: only a literal leading "the" may match a "The X" character. With "The Ghost"
+    # declared, "his Ghost" must NOT fold to that character; it falls through to noun-phrase
+    # resolution, and "ghost" is not a noun, so it raises an unknown-noun error.
+    with pytest.raises(AnalysisError, match="unknown noun: 'Ghost'"):
+        _analyze("Romeo: You are his Ghost.", personae=("Romeo", "Juliet", "The Ghost"))
+
+
+def test_bare_name_does_not_resolve_to_articled_character() -> None:
+    # Issue 18: a bare "Ghost" (no determiner) is not the "The Ghost" character either; it falls
+    # through to noun-phrase resolution and raises unknown-noun ("ghost" is not a noun).
+    with pytest.raises(AnalysisError, match="unknown noun: 'Ghost'"):
+        _analyze("Romeo: You are Ghost.", personae=("Romeo", "Juliet", "The Ghost"))
+
+
+def test_a_determiner_does_not_resolve_to_articled_character() -> None:
+    # Issue 18: "a Ghost" (a non-"the" determiner) is likewise not the character.
+    with pytest.raises(AnalysisError, match="unknown noun: 'Ghost'"):
+        _analyze("Romeo: You are a Ghost.", personae=("Romeo", "Juliet", "The Ghost"))
+
+
+def test_the_before_bare_character_name_still_resolves() -> None:
+    # Issue 18 regression: a leading "the" is harmless when the bare form already names a character.
+    # "the Romeo" resolves to CharacterRef("Romeo") via the bare match, before the the-retry.
+    program = _analyze("Juliet: You are the Romeo.")
+    assert _first_statement(program) == Assignment(CharacterRef("Romeo"))
 
 
 def test_capitalized_noun() -> None:

@@ -44,8 +44,17 @@ This is surprising (a reader expects the vocabulary to live in the grammar) and 
   (1) the `name` *rule* takes an optional leading article (`the`/`a`/`an`) and the
   transformer normalizes the result the way the reference's `normalize_name` does
   (`.title().replace(" Of ", " of ")`), so `the Ghost` → `The Ghost`, idempotent on already-correct
-  names; (2) in value position the determiner is dropped by the `constant` rule, so the analyzer —
-  after a bare character match fails and before the noun-phrase fallback — retries the match with
-  `the` re-prepended (the reference has no `A X`/`An X` character names). The declared-vs-undeclared
-  decision stays the analyzer's: `the King` (no such character) falls through to the constant
-  value, while `the Ghost` (declared) becomes a character reference.
+  names; (2) in value position the `constant` rule keeps a literal leading `the` as a `THE` token
+  (recorded on the `Constant` node as `leading_the`) while dropping every other determiner, so the
+  analyzer — after a bare character match fails and before the noun-phrase fallback — retries the
+  match with `the` re-prepended *only when the source wrote `the`* (the reference has no `A X`/`An X`
+  character names). The declared-vs-undeclared decision stays the analyzer's: `the King` (no such
+  character) falls through to the constant value, while `the Ghost` (declared) becomes a character
+  reference.
+- Value-position articled-character resolution requires a *literal* leading `the` (issue 18, a
+  small conformance fix in the same family as ADR-0004/0005). Carrying only the bare words was
+  ambiguous — a dropped determiner let `his Ghost`, `a Ghost`, and bare `Ghost` all mis-fold to the
+  `The Ghost` character. The reference's `character_name` value is the full literal name (`The
+  Ghost`); a possessive/article only appears in a noun phrase. So a non-`the` determiner (or none)
+  now skips the retry and falls through to noun-phrase resolution (here an "unknown noun" error,
+  since `ghost` is not a noun), matching the reference.

@@ -80,7 +80,11 @@ class ToAst(Transformer[Token, object]):
     # ---- values ----
 
     def constant(self, children: list[object]) -> Constant:
-        return Constant(tuple(_words(children)))
+        # A leading `the` is kept as a THE token by the grammar (every other determiner is inlined
+        # away); record whether it is present so the analyzer knows it may match a `The X` character
+        # (issue 18). The words themselves never include the determiner.
+        leading_the = any(isinstance(c, Token) and c.type == "THE" for c in children)
+        return Constant(tuple(_words(children)), leading_the)
 
     def first_person_value(self, children: list[object]) -> PronounValue:
         return PronounValue("first")

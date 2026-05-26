@@ -132,8 +132,15 @@ expression.2: THE SUM OF value AND value                              -> sum
 // A constant is a noun phrase: an optional determiner, then words. Words may be capitalized
 // (`NAME`) — a capitalized noun like `Lord`, or a character name used as a value like `Romeo`.
 // The analyzer classifies the whole thing (character ref vs noun phrase, incl. multi-word nouns).
-constant: _det? (WORD | NAME)+
-_det: A | AN | THE | MY | MINE | YOUR | THY | THINE | HIS | HER | ITS | THEIR
+//
+// A leading `the` is KEPT as a token (the first alternative) rather than inlined away: the analyzer
+// only re-prepends `the` to match a `The X` character when the source literally wrote `the` (issue
+// 18), so the determiner identity must survive to the AST. Every OTHER determiner stays inlined and
+// dropped (the second alternative): they never name a character, so the analyzer just sees the bare
+// words and folds them as a noun phrase.
+constant: THE (WORD | NAME)+
+        | _det_other? (WORD | NAME)+
+_det_other: A | AN | MY | MINE | YOUR | THY | THINE | HIS | HER | ITS | THEIR
 
 // A character name may carry a leading lowercase article in real programs ("[Enter the Ghost]"),
 // because some SPL character names begin with "The" (e.g. "The Ghost") and are written lowercase

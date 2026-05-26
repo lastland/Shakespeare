@@ -147,8 +147,8 @@ class _Analyzer:
 
     def _fold_expr(self, expr: Expr) -> Expr:
         match expr:
-            case Constant(words):
-                return self._fold_constant(words)
+            case Constant(words, leading_the):
+                return self._fold_constant(words, leading_the)
             case BinaryOp(op, left, right):
                 return BinaryOp(op, self._fold_expr(left), self._fold_expr(right))
             case UnaryOp(op, operand):
@@ -174,7 +174,7 @@ class _Analyzer:
             raise AnalysisError(f"unknown adjective: {adjective!r}")
         return comparison
 
-    def _fold_constant(self, words: tuple[str, ...]) -> Expr:
+    def _fold_constant(self, words: tuple[str, ...], leading_the: bool) -> Expr:
         """Fold to a value (noun phrase) or a CharacterRef (words naming a declared character)."""
         joined = " ".join(words)
         if joined.casefold() in _ZERO_WORDS:
@@ -185,12 +185,15 @@ class _Analyzer:
         # Articled character name (issue 09, facet 2): in value position the determiner of a name
         # like "the Ghost" is dropped by the constant rule, leaving just "Ghost". A leading "the"
         # only ever distinguishes a "The X" character (the reference has no "A X" names), so retry
-        # the match with "the" re-prepended BEFORE the noun-phrase fallback. This runs only after a
-        # bare match fails, so an ordinary noun like "the King" (no such character declared) still
-        # falls through to its constant value rather than being mis-read as a character.
-        articled = self._match_character(f"the {joined}")
-        if articled is not None:
-            return CharacterRef(articled)
+        # the match with "the" re-prepended BEFORE the noun-phrase fallback. This retry is gated on
+        # the source literally having written "the" (issue 18): `his Ghost` / `a Ghost` / bare
+        # `Ghost` must NOT resolve to `The Ghost`, matching the reference, whose character value is
+        # the full literal name. The retry runs only after a bare match fails, so an ordinary noun
+        # like "the King" (no such character declared) still falls through to its constant value.
+        if leading_the:
+            articled = self._match_character(f"the {joined}")
+            if articled is not None:
+                return CharacterRef(articled)
         return Number(self._noun_phrase_value(words))
 
     def _match_character(self, text: str) -> str | None:

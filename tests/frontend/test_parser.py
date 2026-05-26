@@ -117,10 +117,19 @@ def test_exeunt_allows_leading_article() -> None:
     assert parse("[Exeunt the Ghost and Juliet]", start="line") == Exeunt(("The Ghost", "Juliet"))
 
 
-def test_articled_name_in_value_position_keeps_determiner() -> None:
-    # In value position "the Ghost" parses as the determiner "the" + the noun/name "Ghost"; the
-    # frontend keeps the raw words (the analyzer re-prepends the determiner to match a character).
-    assert parse("the Ghost", start="value") == Constant(("Ghost",))
+def test_articled_name_in_value_position_keeps_the_flag() -> None:
+    # In value position "the Ghost" parses as the determiner "the" + the noun/name "Ghost". The
+    # frontend keeps the raw words AND records that the leading determiner was literally "the"
+    # (leading_the=True) so the analyzer may re-prepend it to match a "The X" character (issue 18).
+    assert parse("the Ghost", start="value") == Constant(("Ghost",), leading_the=True)
+
+
+def test_non_the_determiner_in_value_position_does_not_set_the_flag() -> None:
+    # Any other determiner is dropped with leading_the=False: it can never name a "The X" character,
+    # so the analyzer will not retry the character match (issue 18).
+    assert parse("his Ghost", start="value") == Constant(("Ghost",), leading_the=False)
+    assert parse("a Ghost", start="value") == Constant(("Ghost",), leading_the=False)
+    assert parse("Ghost", start="value") == Constant(("Ghost",), leading_the=False)
 
 
 def test_name_article_only_absorbs_the_not_a_or_an() -> None:

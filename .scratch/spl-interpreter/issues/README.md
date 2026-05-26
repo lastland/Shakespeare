@@ -13,8 +13,7 @@ Issues [13](13-negated-question-drops-negation.md)–[22](22-stale-question-bran
 follow-ups filed from the Phase 2 code review — gaps in the features that issues 01/02/03/09/12
 delivered. The six agent-ready (AFK) items are **resolved** (fixed by coding agents, all suites
 green), and the maintainer's decisions on 13 (drop negated questions) and 15 (reject neutral-after-
-`more`) are now **resolved** too (see ADR-0004). One conformance decision remains `ready-for-human`
-(18).
+`more`) are now **resolved** too (see ADR-0004). All ten follow-ups (13–22) are now **resolved** (see ADR-0002, ADR-0004, and ADR-0005).
 
 ## Phase 2 code-review follow-ups
 
@@ -34,7 +33,7 @@ Input I/O (gaps in [09](09-input-error-semantics.md)):
 - [21](21-read-number-discards-char-on-error.md) — `read_number` discards the consumed terminator on the non-numeric error path — **resolved** (offending char pushed back before raising)
 
 Articled names (gaps in [12](12-articled-character-names.md)):
-- [18](18-articled-name-determiner-mismatch.md) — articled-name retry mis-resolves a non-`the` determiner / bare noun to a `The X` character — **ready-for-human**
+- [18](18-articled-name-determiner-mismatch.md) — articled-name retry mis-resolves a non-`the` determiner / bare noun to a `The X` character — **resolved** (decision: match the reference; only a literal leading `the` resolves to a `The X` character — ADR-0002)
 - [20](20-name-article-absorbs-a-an.md) — `_name_article` absorbs `a`/`an` into names too broadly — **resolved** (article narrowed to `the`)
 
 Test maintenance:

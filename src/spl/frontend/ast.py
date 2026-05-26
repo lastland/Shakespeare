@@ -15,12 +15,18 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class Constant:
-    """A value literal: the raw words `article? adjective* noun`, article already dropped.
+    """A value literal: the raw words `article? adjective* noun`.
+
+    The article itself is dropped, EXCEPT that `leading_the` records whether the source literally
+    wrote `the` before the words. The analyzer uses this to decide whether to retry the character
+    match with `the ` re-prepended (only a literal `the` may name a `The X` character — issue 18);
+    every other determiner is dropped with `leading_the=False`.
 
     `("nothing",)` denotes zero. The analyzer computes the integer value.
     """
 
     words: tuple[str, ...]
+    leading_the: bool = False
 
 
 @dataclass(frozen=True)
