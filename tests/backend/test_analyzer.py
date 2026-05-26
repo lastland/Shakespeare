@@ -11,6 +11,7 @@ from spl.errors import AnalysisError
 from spl.frontend.ast import (
     Assignment,
     BinaryOp,
+    CharacterRef,
     Conditional,
     Dialogue,
     Goto,
@@ -51,6 +52,27 @@ def test_adjective_doubles() -> None:
 def test_nothing_is_zero() -> None:
     program = _analyze("Romeo: You are nothing.")
     assert _first_statement(program) == Assignment(Number(0))
+
+
+def test_character_name_folds_to_reference() -> None:
+    program = _analyze("Romeo: You are Juliet.")
+    assert _first_statement(program) == Assignment(CharacterRef("Juliet"))
+
+
+def test_capitalized_noun() -> None:
+    program = _analyze("Romeo: You are a King.")  # King is a positive noun, not a character here
+    assert _first_statement(program) == Assignment(Number(1))
+
+
+def test_multiword_noun_with_adjective() -> None:
+    # noun is the multi-word "summer's day" (=1), doubled by the adjective "lovely"
+    program = _analyze("Romeo: You are a lovely summer's day.")
+    assert _first_statement(program) == Assignment(Number(2))
+
+
+def test_possessive_determiner_is_ignored() -> None:
+    program = _analyze("Romeo: You are his horse.")  # horse = +1
+    assert _first_statement(program) == Assignment(Number(1))
 
 
 def test_unknown_noun_raises() -> None:

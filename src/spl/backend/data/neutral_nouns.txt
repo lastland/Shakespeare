@@ -33,10 +33,9 @@ sister
 sky
 son
 squirrel
-stone
+stone wall
 thing
 town
 tree
 uncle
-wall
 wind

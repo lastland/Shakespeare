@@ -53,6 +53,17 @@ A comparison line ("better than", "worse than", "as ADJ as") that sets a boolean
 "If so" / "If not" line executes conditionally on the most recent Question's result.
 _Avoid_: condition, test, predicate
 
+**Character reference**:
+Using a Character's name in an expression to read that Character's current Value (e.g. "the sum
+of Romeo and a flower"). Distinct from a Constant noun; the analyzer tells them apart by whether
+the word names a declared Character.
+_Avoid_: variable lookup, dereference
+
+**Breakpoint**:
+The stage direction `[A pause]` — a debugger pause. This interpreter parses it for fidelity and
+otherwise ignores it.
+_Avoid_: halt, stop
+
 ## Example dialogue
 
 > **Dev:** When Romeo says "You are as lovely as the sum of a flower and a happy cat", who gets assigned?

@@ -2,7 +2,6 @@ Heaven
 King
 Lord
 angel
-day
 flower
 happiness
 hero
@@ -11,4 +10,4 @@ kingdom
 plum
 pony
 rose
-summer's
+summer's day

@@ -17,6 +17,7 @@ from spl.frontend.ast import (
     Act,
     Assignment,
     BinaryOp,
+    Breakpoint,
     Conditional,
     Constant,
     Dialogue,
@@ -63,7 +64,9 @@ def _names(children: list[object]) -> list[str]:
 
 
 def _words(children: list[object]) -> list[str]:
-    return [str(c) for c in children if isinstance(c, Token) and c.type == "WORD"]
+    # WORD = lowercase vocabulary word; NAME = a capitalized noun (Lord) or a character used as
+    # a value (Romeo). The analyzer classifies them; the determiner tokens are dropped here.
+    return [str(c) for c in children if isinstance(c, Token) and c.type in ("WORD", "NAME")]
 
 
 def _kind(children: list[object]) -> str:
@@ -111,6 +114,12 @@ class ToAst(Transformer[Token, object]):
 
     def square(self, children: list[object]) -> UnaryOp:
         return UnaryOp("square", _exprs(children)[0])
+
+    def square_root(self, children: list[object]) -> UnaryOp:
+        return UnaryOp("sqrt", _exprs(children)[0])
+
+    def cube(self, children: list[object]) -> UnaryOp:
+        return UnaryOp("cube", _exprs(children)[0])
 
     # ---- comparisons ----
 
@@ -183,6 +192,9 @@ class ToAst(Transformer[Token, object]):
 
     def exeunt(self, children: list[object]) -> Exeunt:
         return Exeunt(tuple(_names(children)))
+
+    def breakpoint(self, children: list[object]) -> Breakpoint:
+        return Breakpoint()
 
     def stage_direction(self, children: list[object]) -> object:
         return next(c for c in children if not isinstance(c, Token))

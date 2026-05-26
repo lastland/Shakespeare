@@ -30,10 +30,11 @@ scene: SCENE roman ":" COMMENT "." line*
 ?line: stage_direction | dialogue
 
 stage_direction: "[" _stage "]"
-_stage: enter | exeunt | exit
+_stage: enter | exeunt | exit | breakpoint
 enter: ENTER name (AND name)*
 exit: EXIT name
 exeunt: EXEUNT ( name (AND name)* )?
+breakpoint: A PAUSE
 
 dialogue: name ":" sentence+
 sentence: statement ("." | "!" | "?")
@@ -89,9 +90,14 @@ expression.2: THE SUM OF value AND value                              -> sum
             | THE REMAINDER OF THE QUOTIENT BETWEEN value AND value   -> remainder
             | TWICE value                                             -> twice
             | THE SQUARE OF value                                     -> square
+            | THE SQUARE ROOT OF value                                -> square_root
+            | THE CUBE OF value                                       -> cube
 
-constant: _article? WORD+
-_article: A | AN | THE
+// A constant is a noun phrase: an optional determiner, then words. Words may be capitalized
+// (`NAME`) — a capitalized noun like `Lord`, or a character name used as a value like `Romeo`.
+// The analyzer classifies the whole thing (character ref vs noun phrase, incl. multi-word nouns).
+constant: _det? (WORD | NAME)+
+_det: A | AN | THE | MY | MINE | YOUR | THY | HIS | HER | ITS | THEIR
 
 name: NAME
 roman: ROMAN
@@ -108,6 +114,7 @@ SCENE: /scene(?![a-z])/i
 ENTER: /enter(?![a-z])/i
 EXIT: /exit(?![a-z])/i
 EXEUNT: /exeunt(?![a-z])/i
+PAUSE: /pause(?![a-z])/i
 IF: /if(?![a-z])/i
 SO: /so(?![a-z])/i
 NOT: /not(?![a-z])/i
@@ -136,6 +143,12 @@ THYSELF: /thyself(?![a-z])/i
 YOURSELF: /yourself(?![a-z])/i
 YOUR: /your(?![a-z])/i
 THY: /thy(?![a-z])/i
+MY: /my(?![a-z])/i
+MINE: /mine(?![a-z])/i
+HIS: /his(?![a-z])/i
+HER: /her(?![a-z])/i
+ITS: /its(?![a-z])/i
+THEIR: /their(?![a-z])/i
 A: /a(?![a-z])/i
 AN: /an(?![a-z])/i
 THE: /the(?![a-z])/i
@@ -150,6 +163,8 @@ QUOTIENT: /quotient(?![a-z])/i
 REMAINDER: /remainder(?![a-z])/i
 TWICE: /twice(?![a-z])/i
 SQUARE: /square(?![a-z])/i
+CUBE: /cube(?![a-z])/i
+ROOT: /root(?![a-z])/i
 AND: /and(?![a-z])/i
 
 // --- comparison ---
@@ -171,7 +186,8 @@ MIND: /mind(?![a-z])/i
 NAME: /[A-Z][a-z]+(?:[ \t]+(?:of[ \t]+)?[A-Z][a-z]+)*/
 ROMAN: /[IVXLCDM]+/
 // A vocabulary word (noun/adjective) — fully generic, no keywords baked in (ADR-0002).
-WORD: /[a-z]+/
+// Allows internal apostrophes/hyphens so words like "summer's" and "half-witted" are one token.
+WORD: /[a-z]+(?:['-][a-z]+)*/
 // Free text for the title, persona descriptions, and act/scene titles.
 COMMENT.5: /[^.!?\[\]\n]+/
 

@@ -19,6 +19,8 @@ from spl.errors import AnalysisError
 from spl.frontend.ast import (
     Assignment,
     BinaryOp,
+    Breakpoint,
+    CharacterRef,
     Conditional,
     Constant,
     Dialogue,
@@ -120,6 +122,8 @@ class _Analyzer:
             case Dialogue(speaker, statements):
                 self._require_declared(speaker)
                 return Dialogue(speaker, tuple(self._fold_statement(s) for s in statements))
+            case Breakpoint():
+                return line
 
     def _fold_statement(self, stmt: Statement) -> Statement:
         match stmt:
@@ -135,27 +139,41 @@ class _Analyzer:
     def _fold_expr(self, expr: Expr) -> Expr:
         match expr:
             case Constant(words):
-                return Number(self._constant_value(words))
+                return self._fold_constant(words)
             case BinaryOp(op, left, right):
                 return BinaryOp(op, self._fold_expr(left), self._fold_expr(right))
             case UnaryOp(op, operand):
                 return UnaryOp(op, self._fold_expr(operand))
-            case PronounValue() | Number():
+            case PronounValue() | Number() | CharacterRef():
                 return expr
 
-    def _constant_value(self, words: tuple[str, ...]) -> int:
-        *adjectives, noun = words
-        if noun.casefold() in _ZERO_WORDS:
-            base = 0
-        else:
-            value = self.vocab.noun_value(noun)
-            if value is None:
-                raise AnalysisError(f"unknown noun: {noun!r}")
-            base = value
-        for adjective in adjectives:
-            if not self.vocab.is_adjective(adjective):
-                raise AnalysisError(f"unknown adjective: {adjective!r}")
-        return base * (2 ** len(adjectives))
+    def _fold_constant(self, words: tuple[str, ...]) -> Expr:
+        """Fold to a value (noun phrase) or a CharacterRef (words naming a declared character)."""
+        joined = " ".join(words)
+        if joined.casefold() in _ZERO_WORDS:
+            return Number(0)
+        character = self._match_character(joined)
+        if character is not None:
+            return CharacterRef(character)
+        return Number(self._noun_phrase_value(words))
+
+    def _match_character(self, text: str) -> str | None:
+        folded = text.casefold()
+        return next((name for name in self.declared if name.casefold() == folded), None)
+
+    def _noun_phrase_value(self, words: tuple[str, ...]) -> int:
+        # The noun is the longest trailing run that the vocabulary recognises (handles multi-word
+        # nouns like "summer's day"); the words before it must all be adjectives.
+        count = len(words)
+        for k in range(count, 0, -1):
+            value = self.vocab.noun_value(" ".join(words[count - k :]))
+            if value is not None:
+                adjectives = words[: count - k]
+                for adjective in adjectives:
+                    if not self.vocab.is_adjective(adjective):
+                        raise AnalysisError(f"unknown adjective: {adjective!r}")
+                return value * (2 ** len(adjectives))
+        raise AnalysisError(f"unknown noun: {' '.join(words)!r}")
 
     # ---- goto resolution ----
 

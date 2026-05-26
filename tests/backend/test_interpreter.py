@@ -90,6 +90,40 @@ def test_goto_loop_counts_down() -> None:
     assert run_play(_COUNTDOWN) == "321"
 
 
+def test_cube() -> None:
+    # cat=1, doubled by "happy" = 2, cubed = 8
+    out = run_scene(
+        "[Enter Romeo and Juliet]\nRomeo: You are the cube of a happy cat. Open your heart!"
+    )
+    assert out == "8"
+
+
+def test_square_root() -> None:
+    # cat=1, doubled twice = 4, square root = 2
+    out = run_scene(
+        "[Enter Romeo and Juliet]\n"
+        "Romeo: You are the square root of a happy happy cat. Open your heart!"
+    )
+    assert out == "2"
+
+
+def test_character_reference_reads_value() -> None:
+    # Juliet := flower(1); then Juliet := Juliet(1) + flower(1) = 2, referencing Juliet by name.
+    out = run_scene(
+        "[Enter Romeo and Juliet]\n"
+        "Romeo: You are a flower. You are the sum of Juliet and a flower. Open your heart!"
+    )
+    assert out == "2"
+
+
+def test_breakpoint_is_ignored() -> None:
+    out = run_play(
+        "A Test.\n\nRomeo, a person.\nJuliet, a person.\n\nAct I: a.\nScene I: s.\n"
+        "[Enter Romeo and Juliet]\n[A pause]\nRomeo: You are a flower. Open your heart!\n"
+    )
+    assert out == "1"
+
+
 # ---- dynamic errors (D2) ----
 
 

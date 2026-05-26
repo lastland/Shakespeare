@@ -8,6 +8,8 @@ analyzer. It raises `RuntimeSplError` for the dynamic faults (see ADR-0001).
 
 from __future__ import annotations
 
+import math
+
 from spl.backend.analyzer import AnalyzedProgram
 from spl.backend.io import IO, StdIO
 from spl.backend.state import Character, Stage
@@ -15,6 +17,8 @@ from spl.errors import RuntimeSplError
 from spl.frontend.ast import (
     Assignment,
     BinaryOp,
+    Breakpoint,
+    CharacterRef,
     Conditional,
     Constant,
     Dialogue,
@@ -69,6 +73,8 @@ class Interpreter:
                 self.stage.exeunt(*characters)
             case Dialogue(speaker, statements):
                 return self._run_dialogue(pc, speaker, statements)
+            case Breakpoint():
+                pass  # a debugger marker; nothing to execute
         return None
 
     def _run_dialogue(self, pc: int, speaker: str, statements: tuple[Statement, ...]) -> int | None:
@@ -121,6 +127,8 @@ class Interpreter:
             case PronounValue(person):
                 name = speaker if person == "first" else self._addressee(speaker)
                 return self.characters[name].value
+            case CharacterRef(name):
+                return self.characters[name].value
             case BinaryOp(op, left, right):
                 return self._binary(op, self._eval(speaker, left), self._eval(speaker, right))
             case UnaryOp(op, operand):
@@ -153,6 +161,12 @@ class Interpreter:
                 return 2 * operand
             case "square":
                 return operand * operand
+            case "cube":
+                return operand**3
+            case "sqrt":
+                if operand < 0:
+                    raise RuntimeSplError("square root of a negative number")
+                return math.isqrt(operand)
             case _:  # pragma: no cover
                 raise AssertionError(f"unknown unary operator {op!r}")
 

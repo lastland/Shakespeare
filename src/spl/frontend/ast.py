@@ -52,13 +52,24 @@ class Number:
     """A `Constant` folded to its integer value by the analyzer.
 
     The frontend never produces this; the analyzer rewrites every `Constant` into a `Number`
-    so the interpreter evaluates values without depending on the vocabulary.
+    (or a `CharacterRef`) so the interpreter evaluates values without depending on the vocabulary.
     """
 
     value: int
 
 
-type Expr = Constant | Number | PronounValue | BinaryOp | UnaryOp
+@dataclass(frozen=True)
+class CharacterRef:
+    """A reference to another character's current value by name (e.g. `Romeo` in an expression).
+
+    The frontend emits these as `Constant`s; the analyzer rewrites a constant whose words name a
+    declared character into this node.
+    """
+
+    name: str
+
+
+type Expr = Constant | Number | CharacterRef | PronounValue | BinaryOp | UnaryOp
 
 # ---------------- statements ----------------
 
@@ -147,7 +158,12 @@ class Exeunt:
     characters: tuple[str, ...]
 
 
-type Line = Dialogue | Enter | Exit | Exeunt
+@dataclass(frozen=True)
+class Breakpoint:
+    """`[A pause]` — a debugger breakpoint. We parse it for fidelity and otherwise ignore it."""
+
+
+type Line = Dialogue | Enter | Exit | Exeunt | Breakpoint
 
 # ---------------- structure ----------------
 
