@@ -43,7 +43,7 @@ from spl.frontend.ast import (
 )
 
 _EXPR_TYPES = (Constant, PronounValue, BinaryOp, UnaryOp)
-_LINE_TYPES = (Dialogue, Enter, Exit, Exeunt)
+_LINE_TYPES = (Dialogue, Enter, Exit, Exeunt, Breakpoint)
 _ROMAN = {"I": 1, "V": 5, "X": 10, "L": 50, "C": 100, "D": 500, "M": 1000}
 
 
@@ -200,7 +200,7 @@ class ToAst(Transformer[Token, object]):
         return Remember(_exprs(children)[0])
 
     def recall(self, children: list[object]) -> Recall:
-        # The trailing COMMENT (if any) is ignorable comment text; nothing to carry.
+        # The trailing RECALL_COMMENT (if any) is ignorable comment text; nothing to carry.
         return Recall()
 
     # ---- stage directions ----

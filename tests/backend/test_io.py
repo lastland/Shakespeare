@@ -127,11 +127,53 @@ def test_buffer_read_number_consumes_one_trailing_newline() -> None:
     assert io_.read_char() == ord("X")
 
 
+def test_buffer_read_number_consumes_trailing_crlf() -> None:
+    # A trailing "\r\n" is consumed as one terminator so the "\r" does not leak (ADR-0003).
+    io_ = BufferIO("42\r\nX")
+    assert io_.read_number() == 42
+    assert io_.read_char() == ord("X")
+
+
+def test_buffer_read_number_lone_cr_does_not_leak() -> None:
+    # A lone "\r" (not followed by "\n") terminates the number; it is dropped, not leaked, and the
+    # following real character is preserved.
+    io_ = BufferIO("42\rX")
+    assert io_.read_number() == 42
+    assert io_.read_char() == ord("X")
+
+
+def test_buffer_read_number_trailing_cr_at_eof() -> None:
+    # A "\r" immediately before EOF terminates the number and leaves the stream at EOF.
+    io_ = BufferIO("42\r")
+    assert io_.read_number() == 42
+    assert io_.read_char() == -1
+
+
 def test_buffer_read_number_no_newline_leaves_terminator() -> None:
     # When the terminator is not a newline it is pushed back for the next read.
     io_ = BufferIO("42X")
     assert io_.read_number() == 42
     assert io_.read_char() == ord("X")
+
+
+def test_buffer_read_number_error_preserves_offending_char() -> None:
+    # On the non-numeric error path the consumed char is pushed back, so it stays readable and the
+    # stream is faithful to the scanf("%d") model (ADR-0003).
+    io_ = BufferIO("-x5")
+    with pytest.raises(RuntimeSplError):
+        io_.read_number()
+    assert io_.read_char() == ord("x")
+    assert io_.read_char() == ord("5")
+
+
+def test_buffer_read_number_non_numeric_char_recoverable() -> None:
+    # A leading non-digit raises but is left in the stream for a subsequent read.
+    io_ = BufferIO("a123")
+    with pytest.raises(RuntimeSplError):
+        io_.read_number()
+    # "a" is recoverable; the digits behind it then parse.
+    assert io_.read_char() == ord("a")
+    assert io_.read_number() == 123
 
 
 def test_buffer_read_number_then_read_char_consumes_in_order() -> None:
@@ -184,3 +226,16 @@ def test_stdio_read_number_consumes_one_trailing_newline() -> None:
     stdio = StdIO(input=io.StringIO("42\nX"))
     assert stdio.read_number() == 42
     assert stdio.read_char() == ord("X")
+
+
+def test_stdio_read_number_consumes_trailing_crlf() -> None:
+    stdio = StdIO(input=io.StringIO("42\r\nX"))
+    assert stdio.read_number() == 42
+    assert stdio.read_char() == ord("X")
+
+
+def test_stdio_read_number_error_preserves_offending_char() -> None:
+    stdio = StdIO(input=io.StringIO("-x5"))
+    with pytest.raises(RuntimeSplError):
+        stdio.read_number()
+    assert stdio.read_char() == ord("x")

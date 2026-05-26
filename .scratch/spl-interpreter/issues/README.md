@@ -4,9 +4,39 @@ Local-markdown issue tracker (see `docs/agents/issue-tracker.md`). One file per 
 `Status:` line uses the triage vocabulary in `docs/agents/triage-labels.md` (extended with
 `resolved` for closed items).
 
-All originally-filed issues are **resolved**. The interpreter runs the canonical `shakespearelang`
-sample programs and byte-matches the oracle on all eight committed programs (`hi`, `hello_world`,
-`greeting`, `echo`, `catch`, `reverse`, `sierpinski`, `primes`).
+Issues [01](01-multiline-comments-break-parsing.md)–[12](12-articled-character-names.md) are
+**resolved**. The interpreter runs the canonical `shakespearelang` sample programs and byte-matches
+the oracle on all eight committed programs (`hi`, `hello_world`, `greeting`, `echo`, `catch`,
+`reverse`, `sierpinski`, `primes`).
+
+Issues [13](13-negated-question-drops-negation.md)–[22](22-stale-question-branch-docstring.md) are
+follow-ups filed from the Phase 2 code review — gaps in the features that issues 01/02/03/09/12
+delivered. The six agent-ready (AFK) items are **resolved** (fixed by coding agents, all suites
+green); four conformance/semantics decisions remain `ready-for-human` (13, 15, 18, 19).
+
+## Phase 2 code-review follow-ups
+
+Comparisons (gaps in [03](03-richer-comparatives.md)):
+- [13](13-negated-question-drops-negation.md) — negated question drops the negation on a non-pronoun left operand — **ready-for-human**
+- [15](15-more-neutral-adjective-comparative.md) — `more <neutral adjective> than` resolves to `gt` instead of being rejected — **ready-for-human**
+
+Parsing fidelity:
+- [14](14-breakpoints-dropped-from-ast.md) — `[A pause]` breakpoints dropped from the scene AST — **resolved** (added `Breakpoint` to the scene line allow-list)
+
+COMMENT terminator vs. the reference's `text_before_punctuation` (gaps around [01](01-multiline-comments-break-parsing.md)/[02](02-implement-stacks.md)):
+- [17](17-recall-comment-executes-statements.md) — Recall comment text after a `?` is executed as statements — **resolved** (dedicated `RECALL_COMMENT` terminal spanning `?` but stopping at `!`/`.`/`[`/`]`; shared `COMMENT` untouched, so 19 stays open)
+- [19](19-title-question-mark-terminator.md) — title/section labels accept `?` as a terminator; the reference does not — **ready-for-human**
+
+Input I/O (gaps in [09](09-input-error-semantics.md)):
+- [16](16-read-number-crlf-handling.md) — `read_number` leaks a carriage return on CRLF input — **resolved** (trailing `\r\n` consumed as one terminator)
+- [21](21-read-number-discards-char-on-error.md) — `read_number` discards the consumed terminator on the non-numeric error path — **resolved** (offending char pushed back before raising)
+
+Articled names (gaps in [12](12-articled-character-names.md)):
+- [18](18-articled-name-determiner-mismatch.md) — articled-name retry mis-resolves a non-`the` determiner / bare noun to a `The X` character — **ready-for-human**
+- [20](20-name-article-absorbs-a-an.md) — `_name_article` absorbs `a`/`an` into names too broadly — **resolved** (article narrowed to `the`)
+
+Test maintenance:
+- [22](22-stale-question-branch-docstring.md) — stale docstring in the `_question_branch` test helper — **resolved** (docstring corrected)
 
 ## Bugs
 - [01](01-multiline-comments-break-parsing.md) — multi-line comments break parsing — **resolved** (dropped the `\n` exclusion from `COMMENT`)

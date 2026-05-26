@@ -9,6 +9,7 @@ from spl.frontend.ast import (
     Act,
     Assignment,
     BinaryOp,
+    Breakpoint,
     Conditional,
     Constant,
     Dialogue,
@@ -122,6 +123,16 @@ def test_articled_name_in_value_position_keeps_determiner() -> None:
     assert parse("the Ghost", start="value") == Constant(("Ghost",))
 
 
+def test_name_article_only_absorbs_the_not_a_or_an() -> None:
+    # Only "the" folds into a name ("the Ghost" -> "The Ghost"); the reference has no "A X"/"An X"
+    # character names, so "a"/"an" must NOT be absorbed (issue 20) — they fail to parse as a name.
+    assert parse("the Ghost", start="name") == "The Ghost"
+    with pytest.raises(ParseError):
+        parse("a Ghost", start="name")
+    with pytest.raises(ParseError):
+        parse("an Ghost", start="name")
+
+
 # ---- statements ----
 
 
@@ -214,6 +225,15 @@ def test_recall_keyword_wins_over_name_at_statement_position() -> None:
 
 def test_recall_without_comment_text() -> None:
     assert parse("Recall.", start="sentence") == Recall()
+
+
+def test_recall_comment_spans_question_mark() -> None:
+    # A "?" inside a Recall comment is comment text, not a sentence terminator: the whole
+    # "is this real? Speak your mind" is one ignorable recall comment that runs to the final "."
+    # (issue 17). The trailing "Speak your mind" must NOT split off as an OutputChar.
+    assert parse("Romeo: Recall is this real? Speak your mind.", start="line") == Dialogue(
+        "Romeo", (Recall(),)
+    )
 
 
 def test_malformed_input_raises_parse_error() -> None:
@@ -316,4 +336,36 @@ def test_full_play_structure() -> None:
                 ),
             ),
         ),
+    )
+
+
+# ---- breakpoints survive into the scene AST (issue 14) ----
+
+_BREAKPOINT_PLAY = """A Test.
+
+Romeo, a person.
+Juliet, a person.
+
+Act I: a.
+Scene I: s.
+[Enter Romeo and Juliet]
+Romeo: You are nothing!
+[A pause]
+Juliet: You are nothing!
+[Exeunt]
+"""
+
+
+def test_breakpoint_survives_in_scene_lines() -> None:
+    # "[A pause]" parses to a Breakpoint that must be kept in scene.lines at its source position
+    # (issue 14): the scene line-filter formerly omitted Breakpoint, silently dropping it.
+    program = parse(_BREAKPOINT_PLAY)
+    assert isinstance(program, Program)
+    lines = program.acts[0].scenes[0].lines
+    assert lines == (
+        Enter(("Romeo", "Juliet")),
+        Dialogue("Romeo", (Assignment(Constant(("nothing",))),)),
+        Breakpoint(),
+        Dialogue("Juliet", (Assignment(Constant(("nothing",))),)),
+        Exeunt(()),
     )

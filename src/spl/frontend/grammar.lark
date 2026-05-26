@@ -94,8 +94,14 @@ conditional: IF SO ","? statement  -> if_so
 // trailing text being an ignorable comment (optional, matching the reference's empty-allowed
 // text_before_punctuation). REMEMBER/RECALL are keywords so they win over NAME at statement
 // position even though they are capitalized (see the terminals note below).
+// The recall comment uses its OWN terminal (RECALL_COMMENT, below), NOT the shared title COMMENT:
+// the reference's `recall_string` runs to the next "!"/"." and so spans a "?", whereas COMMENT
+// stops at "?" — reusing COMMENT would let "Recall is this real? Speak your mind." split the tail
+// into executable statements (issue 17). The "?" sentence terminator therefore cannot end a
+// Recall (matching the reference's `pop = "Recall" recall_string ("!" | ".")`); a Recall ends only
+// on "!"/"." (the sentence terminator), which RECALL_COMMENT deliberately stops before.
 remember: REMEMBER value
-recall: RECALL COMMENT?
+recall: RECALL RECALL_COMMENT?
 
 goto: _lead (RETURN | PROCEED) TO target
 _lead: LET US | WE SHALL | WE MUST
@@ -131,8 +137,10 @@ _det: A | AN | THE | MY | MINE | YOUR | THY | THINE | HIS | HER | ITS | THEIR
 // here (issue 09). The article is absorbed into the name and the whole thing is normalized to the
 // declared form (e.g. "the Ghost" -> "The Ghost") in the transformer. This is the ONLY way the
 // generic NAME terminal stays purely capitalized (ADR-0002): we widen the `name` RULE, not NAME.
+// Only "the" is accepted: the reference has no "A X"/"An X" character names, and the analyzer's
+// value path only re-prepends "the" (issue 20).
 name: _name_article? NAME
-_name_article: A | AN | THE
+_name_article: THE
 roman: ROMAN
 
 // ========================= terminals =========================
@@ -242,6 +250,11 @@ WORD: /[a-z]+(?:['-][a-z]+)*/
 // descriptions and act/scene titles — may wrap across lines, so newlines are NOT excluded. A
 // program missing its terminating "." lets a COMMENT eat ahead; that program is malformed.
 COMMENT.5: /[^.!?\[\]]+/
+// The ignorable comment after `Recall`. Unlike COMMENT it SPANS "?" — the reference's
+// `recall_string` runs to the next "!"/"." (issue 17) — so a "?" inside the comment stays comment
+// text instead of splitting off statements. It still stops before "!"/"." (so the sentence
+// terminator ends the Recall) and before "["/"]" (so stage directions are never absorbed).
+RECALL_COMMENT.6: /[^!.\[\]]+/
 
 %import common.WS
 %ignore WS

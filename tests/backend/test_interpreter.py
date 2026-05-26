@@ -128,10 +128,11 @@ def test_breakpoint_is_ignored() -> None:
 
 
 def _question_branch(comparative: str, *, romeo: str, juliet: str) -> str:
-    """Set Juliet := `juliet`, ask `Am I <comparative> you?` (I=Romeo via Juliet's value... ),
+    """Set Juliet := `juliet`, then ask `Are you <comparative> <romeo>?`.
 
-    then output on the true branch. We drive both operands through assignments so each
-    comparative kind is exercised against known values.
+    The Question's left operand is "you" (the Addressee, Juliet, holding `juliet`) and its right
+    operand is the Constant `romeo`; the true branch outputs Juliet's value. We drive both operands
+    through known Constants so each comparative kind is exercised against known values.
     """
     return run_scene(
         "[Enter Romeo and Juliet]\n"

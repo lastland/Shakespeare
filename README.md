@@ -13,6 +13,13 @@ It is written in typed Python (`pyright --strict`), parses with [lark](https://g
 and cleanly separates a **frontend** (source → immutable typed AST) from a **backend** (a static
 analyzer + a tree-walking interpreter). It was built test-first.
 
+> **An experiment in agent-driven development.** This project is a testbed for using AI coding
+> agents (Claude Code) to implement a programming-language interpreter — its grammar, static
+> analyzer, tree-walking interpreter, test suite, and the conformance pass against the reference.
+> Work is queued as markdown issues under
+> [`.scratch/spl-interpreter/issues/`](.scratch/spl-interpreter/issues/), which double as the
+> agents' task list.
+
 ## Install & run
 
 Requires Python ≥ 3.13 and [uv](https://docs.astral.sh/uv/).
