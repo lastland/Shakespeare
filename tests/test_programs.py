@@ -1,7 +1,10 @@
 """Golden integration tests: run each program under tests/programs/ and diff against its `.out`.
 
 Add a program by dropping `<name>.spl` and `<name>.out` (and an optional `<name>.in` for stdin)
-into `tests/programs/`. Expected outputs were confirmed against the `shakespearelang` reference.
+into `tests/programs/`; the parametrization auto-discovers it via the `*.spl` glob. The `.out`
+files are *committed* goldens, so this suite is reference-free at run time -- it runs only our
+interpreter and diffs against the recorded bytes. Each golden was generated once from the
+`shakespearelang` oracle (the opt-in `test_differential.py` re-derives the comparison live).
 """
 
 from __future__ import annotations
@@ -21,7 +24,7 @@ _PROGRAMS = Path(__file__).parent / "programs"
 
 
 def _run(source: str, stdin: str) -> str:
-    io = BufferIO(stdin)
+    io = BufferIO(input_text=stdin)
     Interpreter(analyze(cast(Program, parse(source))), io).run()
     return io.output
 

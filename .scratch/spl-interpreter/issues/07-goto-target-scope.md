@@ -1,6 +1,6 @@
 # Decide goto target scope: act+scene superset vs scene-only
 
-Status: needs-triage
+Status: resolved
 
 Our grammar accepts gotos to both **acts and scenes** (`Let us proceed to act II` /
 `... to scene II`). The `shakespearelang` reference grammar only allows **scene** targets

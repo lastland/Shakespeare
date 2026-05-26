@@ -1,0 +1,102 @@
+# spl — a typed-Python Shakespeare Programming Language interpreter
+
+An interpreter for the [Shakespeare Programming Language](https://esolangs.org/wiki/Shakespeare)
+(Hasselström & Åslund, 2001) — an esoteric language whose programs read like Shakespeare plays.
+Characters are variables, dialogue is computation, and Acts/Scenes are goto labels.
+
+```
+$ uv run spl tests/programs/hello_world.spl
+Hello World!
+```
+
+It is written in typed Python (`pyright --strict`), parses with [lark](https://github.com/lark-parser/lark),
+and cleanly separates a **frontend** (source → immutable typed AST) from a **backend** (a static
+analyzer + a tree-walking interpreter). It was built test-first.
+
+## Install & run
+
+Requires Python ≥ 3.13 and [uv](https://docs.astral.sh/uv/).
+
+```bash
+uv sync                                  # install (editable) + dev tools
+uv run spl path/to/program.spl           # run a program
+uv run python -m spl path/to/program.spl # equivalent
+```
+
+## Architecture
+
+```
+src/spl/
+  errors.py            SplError → ParseError, AnalysisError, RuntimeSplError
+  frontend/
+    grammar.lark       Earley grammar: named keyword terminals + a generic WORD; vocabulary
+                       lives in data files, not the grammar (see ADR-0002)
+    ast.py             frozen @dataclass AST nodes (the frontend/backend boundary)
+    transformer.py     lark tree → AST (purely syntactic)
+    parser.py          parse(source) → Program
+  backend/
+    vocabulary.py      loader for the word-lists
+    data/*.txt         positive/negative/neutral nouns, adjectives, character names
+    analyzer.py        classifies words, folds Constants to Numbers, checks names/gotos →
+                       AnalyzedProgram (a flat line list + label maps)
+    state.py           Character (value + LIFO stack), Stage (who is on stage)
+    io.py              IO protocol + StdIO + an in-memory BufferIO test double
+    interpreter.py     tree-walk with a program counter over the AnalyzedProgram
+  cli.py               read file → parse → analyze → interpret
+```
+
+- **Domain glossary:** [`CONTEXT.md`](CONTEXT.md) — the vocabulary the code uses (Character, Stage,
+  Speaker/Addressee, Constant, Question, Stack, …).
+- **Decisions:** [`docs/adr/`](docs/adr/) — why the interpreter behaves as it does.
+
+## Supported language
+
+Dramatis Personae declarations; `Enter`/`Exit`/`Exeunt` and the `[A pause]` breakpoint;
+assignment (with the optional `be`/`as ADJ as` flavour); Constants (`article? adjective* noun`,
+incl. multi-word and capitalized nouns); Character references; the arithmetic operators
+(`sum`/`difference`/`product`/`quotient`/`remainder`, `twice`, `square`, `cube`, `square root`);
+all four I/O forms; **stacks** (`Remember`/`Recall`); the full comparative set
+(`better`/`bigger`/`worse`/`punier`/… , `more ADJ than`, `as ADJ as`, with `not` inversion) plus
+`If so`/`If not`; and `goto` to an **act or scene**.
+
+### Conformance & intentional divergences
+
+This interpreter is cross-checked against the de-facto reference,
+[`shakespearelang`](https://github.com/zmbc/shakespearelang) — the eight programs under
+`tests/programs/` byte-match it (`hi`, `hello_world`, `greeting`, `echo`, `catch`, `reverse`,
+`sierpinski`, `primes`). Where the spec is silent we made deliberate choices, recorded as ADRs:
+
+- **Strict errors for spec-undefined runtime cases** ([ADR-0001](docs/adr/0001-strict-semantics-for-undefined-cases.md)):
+  division/modulo by zero, off-stage reference, >2 on stage, invalid character output, a √ of a
+  negative, **numeric input at EOF / non-numeric input**, and an `If so`/`If not` with no preceding
+  Question all raise. The one carve-out is **character-input EOF → -1** (the EOF protocol the
+  looping programs rely on).
+- **Numeric input** ([ADR-0003](docs/adr/0003-input-parsing-and-error-semantics.md)): spl2c-faithful
+  parsing (skips leading whitespace, accepts a sign) but strict errors — a deliberate blend.
+- **Goto accepts act *or* scene** ([ADR-0002](docs/adr/0002-parsing-strategy-generic-word.md)),
+  following the official report; `shakespearelang` allows scenes only.
+- **Exact integer division/√**: we truncate toward zero with exact integers; the reference uses
+  float division, which loses precision above 2⁵³. Same sign convention, more precise.
+
+**Known gaps:** the `factorial` operator (`the factorial of`) is not implemented (the reference has
+it; no sample program uses it).
+
+## Development
+
+```bash
+uv run ruff check          # lint
+uv run ruff format         # format
+uv run pyright             # type-check (strict)
+uv run pytest              # the test suite (reference-free)
+```
+
+The default suite has no dependency on another interpreter. An **opt-in differential harness**
+cross-checks our output against `shakespearelang` (a dev-only dependency), with an allow-list of the
+intentional divergences above:
+
+```bash
+uv run --with shakespearelang pytest -m differential
+```
+
+Open work and conformance notes are tracked as markdown issues under
+[`.scratch/spl-interpreter/issues/`](.scratch/spl-interpreter/issues/).

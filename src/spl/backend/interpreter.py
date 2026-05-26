@@ -30,11 +30,14 @@ from spl.frontend.ast import (
     InputChar,
     InputNumber,
     Line,
+    MoreComparative,
     Number,
     OutputChar,
     OutputNumber,
     PronounValue,
     Question,
+    Recall,
+    Remember,
     Statement,
     UnaryOp,
 )
@@ -111,6 +114,11 @@ class Interpreter:
                     return self._run_statement(pc, speaker, body)
             case Goto(kind, number):
                 return self._goto(pc, kind, number)
+            case Remember(value):
+                # Both stack operations target the addressee (the on-stage opposite).
+                self._addressed(speaker).push(self._eval(speaker, value))
+            case Recall():
+                self._addressed(speaker).pop()
         return None
 
     def _goto(self, pc: int, kind: str, number: int) -> int:
@@ -170,7 +178,9 @@ class Interpreter:
             case _:  # pragma: no cover
                 raise AssertionError(f"unknown unary operator {op!r}")
 
-    def _compare(self, left: int, right: int, comparison: str, negated: bool) -> bool:
+    def _compare(
+        self, left: int, right: int, comparison: str | MoreComparative, negated: bool
+    ) -> bool:
         match comparison:
             case "eq":
                 result = left == right
@@ -178,6 +188,8 @@ class Interpreter:
                 result = left > right
             case "lt":
                 result = left < right
+            case MoreComparative():  # pragma: no cover - analyzer resolves every MoreComparative
+                raise AssertionError("comparison was not resolved by the analyzer")
             case _:  # pragma: no cover
                 raise AssertionError(f"unknown comparison {comparison!r}")
         return not result if negated else result

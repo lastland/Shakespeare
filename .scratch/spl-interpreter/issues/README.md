@@ -1,25 +1,33 @@
 # SPL interpreter — issue index
 
 Local-markdown issue tracker (see `docs/agents/issue-tracker.md`). One file per issue; the
-`Status:` line uses the triage vocabulary in `docs/agents/triage-labels.md`.
+`Status:` line uses the triage vocabulary in `docs/agents/triage-labels.md` (extended with
+`resolved` for closed items).
+
+All originally-filed issues are **resolved**. The interpreter runs the canonical `shakespearelang`
+sample programs and byte-matches the oracle on all eight committed programs (`hi`, `hello_world`,
+`greeting`, `echo`, `catch`, `reverse`, `sierpinski`, `primes`).
 
 ## Bugs
-- [01](01-multiline-comments-break-parsing.md) — multi-line comments break parsing — **ready-for-agent**
+- [01](01-multiline-comments-break-parsing.md) — multi-line comments break parsing — **resolved** (dropped the `\n` exclusion from `COMMENT`)
 
 ## Phase 2 language features
-- [02](02-implement-stacks.md) — stacks (Remember/Recall) — **ready-for-agent**
-- [03](03-richer-comparatives.md) — full comparative set — **ready-for-agent**
+- [02](02-implement-stacks.md) — stacks (Remember/Recall) — **resolved** (both target the addressee; empty Recall raises, per ADR-0001)
+- [03](03-richer-comparatives.md) — full comparative set — **resolved** (full reference set incl. `more ADJ than`; no `less`)
 
 ## Reference-program coverage
-- [04](04-remaining-reference-programs.md) — remaining sample programs as golden tests — **needs-triage**
+- [04](04-remaining-reference-programs.md) — remaining sample programs as golden tests — **resolved** (echo/catch/reverse/sierpinski/primes committed with stdin fixtures; all byte-match the oracle)
 
-## Conformance decisions (vs shakespearelang)
-- [07](07-goto-target-scope.md) — goto act+scene vs scene-only — **needs-triage**
-- [08](08-division-sign-convention.md) — division/remainder sign — **needs-info**
-- [09](09-input-error-semantics.md) — non-numeric input: -1 vs error — **needs-triage**
-- [10](10-conditional-without-question.md) — If so/If not with no question — **needs-info**
+## Conformance decisions (vs shakespearelang / the spec)
+- [07](07-goto-target-scope.md) — goto act+scene vs scene-only — **resolved** (keep act+scene; spec-faithful — ADR-0002)
+- [08](08-division-sign-convention.md) — division/remainder sign — **resolved** (exact-int truncate-toward-zero; matches the reference's convention, more precise)
+- [09](09-input-error-semantics.md) — non-numeric/EOF input — **resolved** (numeric input raises on EOF/non-numeric; spl2c-faithful parsing; char EOF→-1 — ADR-0003, ADR-0001)
+- [10](10-conditional-without-question.md) — If so/If not with no question — **resolved** (keep strict raise; spec-silence alone → strict — ADR-0001)
+
+## Naming
+- [12](12-articled-character-names.md) — character names with a lowercase leading article (`the Ghost`) — **resolved** (scoped leading-article handling; unblocked `primes.spl` — ADR-0002)
 
 ## Infrastructure
-- [05](05-package-data-for-wheel.md) — package data files for wheel installs — **ready-for-agent**
-- [06](06-differential-ci-testing.md) — live differential CI testing — **ready-for-agent**
-- [11](11-write-readme.md) — write the README — **ready-for-human**
+- [05](05-package-data-for-wheel.md) — package data files for wheel installs — **resolved** (`importlib.resources` + `uv_build source-include`; verified from a clean-venv wheel)
+- [06](06-differential-ci-testing.md) — live differential testing — **resolved** (opt-in `pytest -m differential` harness + allow-list; GitHub Actions YAML deferred until a remote exists)
+- [11](11-write-readme.md) — write the README — **resolved** (drafted; pending human wording review)

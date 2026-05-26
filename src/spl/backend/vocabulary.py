@@ -13,19 +13,28 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from functools import cache
-from pathlib import Path
+from importlib.resources import files
 
-_DATA = Path(__file__).parent / "data"
+# Resolve the data directory via importlib.resources rather than `__file__` so the word-lists
+# load whether the package is installed as a wheel, run from source, or imported from a zip.
+_DATA = files("spl.backend.data")
 
 
 @dataclass(frozen=True)
 class Vocabulary:
-    """The loaded word-lists, all stored case-folded for case-insensitive lookup."""
+    """The loaded word-lists, all stored case-folded for case-insensitive lookup.
+
+    `negative_adjectives` is a subset of `adjectives` (the reference EBNF's `negative_adjective`
+    list). Adjective polarity is otherwise irrelevant to a constant's value (any adjective just
+    doubles the magnitude); it matters only for `more <adjective> than`, whose direction is
+    less-than for a negative adjective and greater-than otherwise.
+    """
 
     positive_nouns: frozenset[str]
     neutral_nouns: frozenset[str]
     negative_nouns: frozenset[str]
     adjectives: frozenset[str]
+    negative_adjectives: frozenset[str]
     character_names: frozenset[str]
 
     def noun_value(self, word: str) -> int | None:
@@ -40,12 +49,20 @@ class Vocabulary:
     def is_adjective(self, word: str) -> bool:
         return word.casefold() in self.adjectives
 
+    def is_negative_adjective(self, word: str) -> bool:
+        """True for an adjective in the reference's `negative_adjective` list.
+
+        Used to classify `more <adjective> than`: a negative adjective means less-than, any other
+        (positive or neutral) adjective means greater-than.
+        """
+        return word.casefold() in self.negative_adjectives
+
     def is_character_name(self, name: str) -> bool:
         return name.casefold() in self.character_names
 
 
 def _load_set(filename: str) -> frozenset[str]:
-    text = (_DATA / filename).read_text(encoding="utf-8")
+    text = _DATA.joinpath(filename).read_text(encoding="utf-8")
     return frozenset(line.strip().casefold() for line in text.splitlines() if line.strip())
 
 
@@ -57,5 +74,6 @@ def load() -> Vocabulary:
         neutral_nouns=_load_set("neutral_nouns.txt"),
         negative_nouns=_load_set("negative_nouns.txt"),
         adjectives=_load_set("adjectives.txt"),
+        negative_adjectives=_load_set("negative_adjectives.txt"),
         character_names=_load_set("character_names.txt"),
     )

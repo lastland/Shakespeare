@@ -1,6 +1,6 @@
 # Implement stacks (Remember / Recall) — phase 2
 
-Status: ready-for-agent
+Status: resolved
 
 Each Character has a LIFO stack in addition to its value (already noted in CONTEXT.md and the
 `Character` dataclass has an unused `stack` field). Phase 1 deferred this (decision D1).

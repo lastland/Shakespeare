@@ -1,6 +1,6 @@
 # Verify "If so / If not" with no preceding question against the reference
 
-Status: needs-info
+Status: resolved
 
 `src/spl/backend/interpreter.py` raises `RuntimeSplError("conditional without a preceding
 question")` when an `If so` / `If not` runs before any question has set the boolean register.

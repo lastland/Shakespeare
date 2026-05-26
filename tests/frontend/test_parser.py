@@ -18,12 +18,15 @@ from spl.frontend.ast import (
     Goto,
     InputChar,
     InputNumber,
+    MoreComparative,
     OutputChar,
     OutputNumber,
     Persona,
     Program,
     PronounValue,
     Question,
+    Recall,
+    Remember,
     Scene,
     UnaryOp,
 )
@@ -43,6 +46,12 @@ def test_nothing_is_a_constant() -> None:
 def test_word_with_keyword_prefix_is_not_a_keyword() -> None:
     # "summer" must not be mis-tokenised because "sum" is a keyword.
     assert parse("a summer", start="value") == Constant(("summer",))
+
+
+def test_thine_is_a_possessive_determiner() -> None:
+    # `thine` is a second-person possessive (reference EBNF); like any determiner it is dropped,
+    # leaving the noun. Used in sierpinski.spl as "thine goat".
+    assert parse("thine goat", start="value") == Constant(("goat",))
 
 
 def test_pronoun_values() -> None:
@@ -90,6 +99,29 @@ def test_exit_and_exeunt() -> None:
     assert parse("[Exeunt]", start="line") == Exeunt(())
 
 
+# ---- articled character names (issue 09): "the Ghost" -> "The Ghost" ----
+
+
+def test_enter_allows_leading_lowercase_article_and_normalizes() -> None:
+    # "[Enter the Ghost and Juliet]" (primes.spl): the lowercase article is absorbed into the
+    # name and normalized to the declared form "The Ghost".
+    assert parse("[Enter the Ghost and Juliet]", start="line") == Enter(("The Ghost", "Juliet"))
+
+
+def test_exit_allows_leading_article() -> None:
+    assert parse("[Exit the Ghost]", start="line") == Exit("The Ghost")
+
+
+def test_exeunt_allows_leading_article() -> None:
+    assert parse("[Exeunt the Ghost and Juliet]", start="line") == Exeunt(("The Ghost", "Juliet"))
+
+
+def test_articled_name_in_value_position_keeps_determiner() -> None:
+    # In value position "the Ghost" parses as the determiner "the" + the noun/name "Ghost"; the
+    # frontend keeps the raw words (the analyzer re-prepends the determiner to match a character).
+    assert parse("the Ghost", start="value") == Constant(("Ghost",))
+
+
 # ---- statements ----
 
 
@@ -109,6 +141,46 @@ def test_question_relative_and_negated_equality() -> None:
     )
 
 
+@pytest.mark.parametrize(
+    "word",
+    ["better", "bigger", "fresher", "friendlier", "nicer", "jollier"],
+)
+def test_positive_comparatives_parse_to_gt(word: str) -> None:
+    assert parse(f"Am I {word} than you?", start="sentence") == Question(
+        PronounValue("first"), PronounValue("second"), "gt", False
+    )
+
+
+@pytest.mark.parametrize("word", ["worse", "punier", "smaller"])
+def test_negative_comparatives_parse_to_lt(word: str) -> None:
+    assert parse(f"Am I {word} than you?", start="sentence") == Question(
+        PronounValue("first"), PronounValue("second"), "lt", False
+    )
+
+
+def test_neutral_comparative_parses_to_eq() -> None:
+    assert parse("Am I as good as you?", start="sentence") == Question(
+        PronounValue("first"), PronounValue("second"), "eq", False
+    )
+
+
+def test_negated_negative_comparative() -> None:
+    assert parse("Am I not worse than you?", start="sentence") == Question(
+        PronounValue("first"), PronounValue("second"), "lt", True
+    )
+
+
+def test_more_adjective_than_carries_unresolved_adjective() -> None:
+    # `more <adj> than` cannot be classified gt/lt without the vocabulary, so the frontend keeps
+    # the raw adjective in a MoreComparative marker; the analyzer resolves it (see analyzer tests).
+    assert parse("Am I more cunning than you?", start="sentence") == Question(
+        PronounValue("first"), PronounValue("second"), MoreComparative("cunning"), False
+    )
+    assert parse("Am I not more rotten than you?", start="sentence") == Question(
+        PronounValue("first"), PronounValue("second"), MoreComparative("rotten"), True
+    )
+
+
 def test_conditional_guards_a_goto() -> None:
     assert parse("If so, let us proceed to scene II.", start="sentence") == Conditional(
         True, Goto("scene", 2)
@@ -118,9 +190,82 @@ def test_conditional_guards_a_goto() -> None:
     )
 
 
+# ---- stacks: Remember / Recall (issue 02) ----
+
+
+def test_remember_pushes_a_value() -> None:
+    # "Remember me!" pushes the speaker's own value (first-person) onto the addressee's stack.
+    assert parse("Remember me!", start="sentence") == Remember(PronounValue("first"))
+
+
+def test_remember_a_constant() -> None:
+    assert parse("Remember a happy cat.", start="sentence") == Remember(Constant(("happy", "cat")))
+
+
+def test_recall_with_trailing_comment_text() -> None:
+    # The text after Recall is an ignorable comment; the node carries no payload.
+    assert parse("Recall your imminent demise!", start="sentence") == Recall()
+
+
+def test_recall_keyword_wins_over_name_at_statement_position() -> None:
+    # "Recall" is capitalized and could collide with NAME; the keyword must win.
+    assert parse("Recall me.", start="sentence") == Recall()
+
+
+def test_recall_without_comment_text() -> None:
+    assert parse("Recall.", start="sentence") == Recall()
+
+
 def test_malformed_input_raises_parse_error() -> None:
     with pytest.raises(ParseError):
         parse("Romeo: Glab the florp of.", start="line")
+
+
+# ---- comments span lines (issue 01) ----
+
+# A persona description that wraps across two lines (as in the primes.spl sample): the COMMENT
+# terminal runs to the next sentence terminator regardless of line breaks.
+_MULTILINE_PERSONA_PLAY = """A Test.
+
+Hamlet, a limiting factor (and by a remarkable coincidence also
+        Romeo's father).
+Juliet, a young woman.
+
+Act I: a.
+Scene I: s.
+[Enter Hamlet and Juliet]
+Juliet: You are nothing.
+"""
+
+
+def test_multiline_persona_description_parses() -> None:
+    program = parse(_MULTILINE_PERSONA_PLAY)
+    assert isinstance(program, Program)
+    assert program.personae == (Persona("Hamlet"), Persona("Juliet"))
+
+
+# ---- title / section terminators accept ! ? . (FIX A) ----
+
+# The reference EBNF lets a title or section label end with any sentence terminator, not just ".".
+_BANGED_TITLES_PLAY = """A Test!
+
+Romeo, a person?
+Juliet, a person.
+
+Act I: a thing!
+Scene I: Romeo must die!
+[Enter Romeo and Juliet]
+Romeo: You are nothing.
+"""
+
+
+def test_title_and_section_terminators_allow_bang_and_question() -> None:
+    program = parse(_BANGED_TITLES_PLAY)
+    assert isinstance(program, Program)
+    assert program.title == "A Test"
+    assert program.personae == (Persona("Romeo"), Persona("Juliet"))
+    assert program.acts[0].number == 1
+    assert program.acts[0].scenes[0].number == 1
 
 
 # ---- whole play ----

@@ -102,15 +102,30 @@ class InputChar:
 
 
 @dataclass(frozen=True)
+class MoreComparative:
+    """An unresolved `more <adjective> than` comparison carrying the raw adjective word.
+
+    The frontend cannot decide the direction of `more cunning than` without the vocabulary (a
+    positive/neutral adjective means greater-than, a negative adjective means less-than), so it
+    emits this marker; the analyzer resolves it to `"gt"` or `"lt"`, exactly as it folds a
+    `Constant` to a `Number`. The interpreter therefore only ever sees the resolved string.
+    """
+
+    adjective: str
+
+
+@dataclass(frozen=True)
 class Question:
     """A comparison whose result drives the next conditional.
 
-    `comparison` is one of `"eq"`, `"gt"`, `"lt"`; `negated` flips the outcome.
+    `comparison` is one of `"eq"`, `"gt"`, `"lt"` after analysis. The frontend may instead emit a
+    `MoreComparative` marker for `more <adjective> than`, which the analyzer resolves to a string.
+    `negated` flips the outcome.
     """
 
     left: Expr
     right: Expr
-    comparison: str
+    comparison: str | MoreComparative
     negated: bool
 
 
@@ -130,8 +145,32 @@ class Goto:
     number: int
 
 
+@dataclass(frozen=True)
+class Remember:
+    """`Remember <value>` — push a value onto the addressee's stack."""
+
+    value: Expr
+
+
+@dataclass(frozen=True)
+class Recall:
+    """`Recall <comment text>` — pop the addressee's stack into the addressee's value.
+
+    The trailing text is an ignorable comment, so the node carries no payload.
+    """
+
+
 type Statement = (
-    Assignment | OutputNumber | OutputChar | InputNumber | InputChar | Question | Conditional | Goto
+    Assignment
+    | OutputNumber
+    | OutputChar
+    | InputNumber
+    | InputChar
+    | Question
+    | Conditional
+    | Goto
+    | Remember
+    | Recall
 )
 
 # ---------------- stage directions ----------------

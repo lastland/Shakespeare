@@ -1,6 +1,6 @@
 # Add the remaining shakespearelang sample programs as golden tests
 
-Status: needs-triage
+Status: resolved
 
 We run `hi.spl` and `hello_world.spl` (byte-matching the reference). The other samples
 (`shakespearelang/tests/sample_plays/`) should become golden tests under `tests/programs/`, each

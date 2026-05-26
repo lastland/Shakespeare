@@ -28,12 +28,15 @@ from spl.frontend.ast import (
     Goto,
     InputChar,
     InputNumber,
+    MoreComparative,
     OutputChar,
     OutputNumber,
     Persona,
     Program,
     PronounValue,
     Question,
+    Recall,
+    Remember,
     Scene,
     Statement,
     UnaryOp,
@@ -69,8 +72,14 @@ def _words(children: list[object]) -> list[str]:
     return [str(c) for c in children if isinstance(c, Token) and c.type in ("WORD", "NAME")]
 
 
-def _kind(children: list[object]) -> str:
-    return next(c for c in children if isinstance(c, str) and not isinstance(c, Token))
+def _comparison(children: list[object]) -> str | MoreComparative:
+    # The comparison value emitted by a comp_kind rule: a plain "eq"/"gt"/"lt" string, or a
+    # MoreComparative marker. The only other child here is the NOT keyword token (cmp_negated).
+    return next(
+        c
+        for c in children
+        if isinstance(c, MoreComparative) or (isinstance(c, str) and not isinstance(c, Token))
+    )
 
 
 def _int(children: list[object]) -> int:
@@ -132,11 +141,16 @@ class ToAst(Transformer[Token, object]):
     def lt(self, children: list[object]) -> str:
         return "lt"
 
-    def cmp_positive(self, children: list[object]) -> tuple[str, bool]:
-        return (_kind(children), False)
+    def more_than(self, children: list[object]) -> MoreComparative:
+        # `more WORD than` — keep the raw adjective; the analyzer resolves the direction (gt/lt).
+        word = next(c for c in children if isinstance(c, Token) and c.type == "WORD")
+        return MoreComparative(str(word))
 
-    def cmp_negated(self, children: list[object]) -> tuple[str, bool]:
-        return (_kind(children), True)
+    def cmp_positive(self, children: list[object]) -> tuple[str | MoreComparative, bool]:
+        return (_comparison(children), False)
+
+    def cmp_negated(self, children: list[object]) -> tuple[str | MoreComparative, bool]:
+        return (_comparison(children), True)
 
     # ---- statements ----
 
@@ -160,7 +174,7 @@ class ToAst(Transformer[Token, object]):
         # The comparison result (a (kind, negated) tuple) is the child that is neither a token
         # nor an expression. Found by exclusion so its element types stay known to the checker.
         comparison_obj = next(c for c in children if not isinstance(c, (Token, *_EXPR_TYPES)))
-        comparison, negated = cast("tuple[str, bool]", comparison_obj)
+        comparison, negated = cast("tuple[str | MoreComparative, bool]", comparison_obj)
         return Question(left, right, comparison, negated)
 
     def if_so(self, children: list[object]) -> Conditional:
@@ -182,6 +196,13 @@ class ToAst(Transformer[Token, object]):
     def goto(self, children: list[object]) -> Goto:
         return next(c for c in children if isinstance(c, Goto))
 
+    def remember(self, children: list[object]) -> Remember:
+        return Remember(_exprs(children)[0])
+
+    def recall(self, children: list[object]) -> Recall:
+        # The trailing COMMENT (if any) is ignorable comment text; nothing to carry.
+        return Recall()
+
     # ---- stage directions ----
 
     def enter(self, children: list[object]) -> Enter:
@@ -202,8 +223,13 @@ class ToAst(Transformer[Token, object]):
     # ---- structure ----
 
     def name(self, children: list[object]) -> str:
-        token = next(c for c in children if isinstance(c, Token))
-        return " ".join(str(token).split())
+        # A name may carry a leading article token ("the Ghost"); join it with the NAME and
+        # normalize to the declared form. Normalization mirrors the reference's `normalize_name`
+        # (title-case, but keep the "of" connective lowercase), so "the Ghost" -> "The Ghost" and
+        # "John Of Gaunt" -> "John of Gaunt"; it is idempotent on already-correct names.
+        tokens = [str(c) for c in children if isinstance(c, Token)]
+        joined = " ".join(" ".join(tokens).split())
+        return joined.title().replace(" Of ", " of ")
 
     def roman(self, children: list[object]) -> int:
         return _roman_to_int(str(children[0]))

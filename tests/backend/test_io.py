@@ -2,7 +2,11 @@
 
 `BufferIO` is the test double (in-memory streams); `StdIO` is exercised over real
 `io.StringIO` streams to prove it honors the same contract without touching sys.stdin/out.
-Invalid-codepoint and EOF→-1 behavior follow ADR-0001.
+
+Per ADR-0003 numeric input parses like spl2c's `scanf("%d")` (skip leading whitespace,
+optional sign, digit run) but errors strictly: it *raises* `RuntimeSplError` at EOF and on
+non-numeric input, and consumes one trailing newline after the digits. Character input keeps
+the ADR-0001 EOF -> -1 carve-out. Invalid-codepoint output raises per ADR-0001.
 """
 
 from __future__ import annotations
@@ -73,6 +77,7 @@ def test_buffer_read_number_plain() -> None:
 
 
 def test_buffer_read_number_with_sign() -> None:
+    # Sign parsing is faithful to spl2c's scanf("%d") (ADR-0003).
     assert BufferIO("-45").read_number() == -45
     assert BufferIO("+9").read_number() == 9
 
@@ -82,15 +87,30 @@ def test_buffer_read_number_skips_leading_whitespace() -> None:
     assert io_.read_number() == 88
 
 
-def test_buffer_read_number_eof_returns_minus_one() -> None:
-    assert BufferIO("").read_number() == -1
-    assert BufferIO("    ").read_number() == -1
+def test_buffer_read_number_eof_raises() -> None:
+    # Numeric input at EOF raises rather than returning a sentinel (ADR-0003).
+    with pytest.raises(RuntimeSplError):
+        BufferIO("").read_number()
+    with pytest.raises(RuntimeSplError):
+        BufferIO("    ").read_number()
 
 
-def test_buffer_read_number_no_digits_returns_minus_one() -> None:
-    assert BufferIO("abc").read_number() == -1
-    # a lone sign with no digits is not a number
-    assert BufferIO("-x").read_number() == -1
+def test_buffer_read_number_non_numeric_raises() -> None:
+    # Non-numeric input where a number is expected raises (ADR-0003).
+    with pytest.raises(RuntimeSplError):
+        BufferIO("abc").read_number()
+    with pytest.raises(RuntimeSplError):
+        BufferIO("a123").read_number()
+    # a lone sign with no digit following is not a number
+    with pytest.raises(RuntimeSplError):
+        BufferIO("-x").read_number()
+
+
+def test_buffer_read_number_digit_prefix_leaves_rest() -> None:
+    # "4257a123" parses the digit prefix and leaves the non-digits for the next read.
+    io_ = BufferIO("4257a123")
+    assert io_.read_number() == 4257
+    assert io_.read_char() == ord("a")
 
 
 def test_buffer_read_number_stops_at_non_digit_and_leaves_rest() -> None:
@@ -98,6 +118,20 @@ def test_buffer_read_number_stops_at_non_digit_and_leaves_rest() -> None:
     assert io_.read_number() == 12
     # the space + remaining digits are still readable
     assert io_.read_number() == 34
+
+
+def test_buffer_read_number_consumes_one_trailing_newline() -> None:
+    # A number's trailing newline is consumed, not leaked into the next char read (ADR-0003).
+    io_ = BufferIO("42\nX")
+    assert io_.read_number() == 42
+    assert io_.read_char() == ord("X")
+
+
+def test_buffer_read_number_no_newline_leaves_terminator() -> None:
+    # When the terminator is not a newline it is pushed back for the next read.
+    io_ = BufferIO("42X")
+    assert io_.read_number() == 42
+    assert io_.read_char() == ord("X")
 
 
 def test_buffer_read_number_then_read_char_consumes_in_order() -> None:
@@ -140,6 +174,13 @@ def test_stdio_read_number_with_sign_and_whitespace() -> None:
     assert stdio.read_number() == -100
 
 
-def test_stdio_read_number_eof_returns_minus_one() -> None:
+def test_stdio_read_number_eof_raises() -> None:
     stdio = StdIO(input=io.StringIO("   "))
-    assert stdio.read_number() == -1
+    with pytest.raises(RuntimeSplError):
+        stdio.read_number()
+
+
+def test_stdio_read_number_consumes_one_trailing_newline() -> None:
+    stdio = StdIO(input=io.StringIO("42\nX"))
+    assert stdio.read_number() == 42
+    assert stdio.read_char() == ord("X")

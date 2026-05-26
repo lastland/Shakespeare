@@ -9,9 +9,12 @@ SPL programs read and write through four primitives, each a stage line:
 I/O is dependency-injected via the `IO` protocol so the interpreter can be tested without
 touching real stdin/stdout: `StdIO` wraps real text streams, `BufferIO` is an in-memory double.
 
-Per ADR-0001 the undefined cases are handled strictly: EOF on a read yields -1, and writing a
-character whose value is not a valid Unicode code point raises `RuntimeSplError` rather than
-coercing it.
+Per ADR-0001/ADR-0003 the undefined cases are handled strictly. Character input keeps the EOF
+-> -1 carve-out (the looping programs depend on it as a protocol). Numeric input parses like
+spl2c's `scanf("%d")` (leading whitespace skip, optional sign, digit run) but *raises*
+`RuntimeSplError` at EOF and on non-numeric input rather than returning a sentinel, and consumes
+one trailing newline after the digits. Writing a character whose value is not a valid Unicode
+code point also raises rather than coercing it.
 """
 
 from __future__ import annotations
@@ -34,7 +37,12 @@ class IO(Protocol):
     """The four-primitive I/O surface the interpreter depends on."""
 
     def read_number(self) -> int:
-        """Read a base-10 integer from input; -1 on EOF or if no number is found."""
+        """Read a base-10 integer from input.
+
+        Parses spl2c-style (leading whitespace skip, optional sign, digit run) but raises
+        `RuntimeSplError` at EOF and on non-numeric input (ADR-0003), and consumes one trailing
+        newline after the digits.
+        """
         ...
 
     def read_char(self) -> int:
@@ -90,15 +98,20 @@ class _CharReader:
     def read_number(self) -> int:
         """Skip leading whitespace, parse an optional sign then base-10 digits.
 
-        The terminating non-digit is pushed back so it stays available. Returns -1 on EOF before
-        any digit, or when a sign is not followed by a digit.
+        Parsing follows spl2c's `scanf("%d")` (ADR-0003): a leading whitespace run is skipped, an
+        optional sign is accepted (so negatives parse), then the digit run is read. One trailing
+        newline after the digits is consumed (so it does not leak into the next character read);
+        any other terminator is pushed back so it stays available.
+
+        Raises `RuntimeSplError` when no digit is found -- at EOF before any digit, on a sign not
+        followed by a digit, or on otherwise non-numeric input.
         """
         # Skip leading whitespace.
         ch = self._next()
         while ch != "" and ch.isspace():
             ch = self._next()
         if ch == "":
-            return -1
+            raise RuntimeSplError("no numeric input: end of file")
 
         sign = 1
         if ch in "+-":
@@ -111,12 +124,14 @@ class _CharReader:
             digits.append(ch)
             ch = self._next()
 
-        # Push back the terminator (or the char after a lone sign) so it can be reread.
-        if ch != "":
+        if not digits:
+            # The terminator (or char after a lone sign) is consumed; non-numeric input raises.
+            raise RuntimeSplError("no numeric input")
+
+        # Consume one trailing newline; otherwise push the terminator back for the next read.
+        if ch != "" and ch != "\n":
             self._push_back(ch)
 
-        if not digits:
-            return -1
         return sign * int("".join(digits))
 
 

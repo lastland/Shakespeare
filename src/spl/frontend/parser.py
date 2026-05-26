@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from functools import cache
-from pathlib import Path
+from importlib.resources import files
 
 from lark import Lark, Token, Tree
 from lark.exceptions import LarkError
@@ -11,7 +11,9 @@ from lark.exceptions import LarkError
 from spl.errors import ParseError
 from spl.frontend.transformer import ToAst
 
-_GRAMMAR_PATH = Path(__file__).with_name("grammar.lark")
+# Load the grammar via importlib.resources rather than `__file__` so it resolves whether the
+# package is installed as a wheel, run from source, or imported from a zip — not just editable.
+_GRAMMAR = files("spl.frontend").joinpath("grammar.lark").read_text(encoding="utf-8")
 
 # Extra start symbols let tests parse individual constructs (a value, a line) in isolation.
 _START_SYMBOLS = ["play", "value", "line", "name", "sentence"]
@@ -25,7 +27,7 @@ def _parser() -> Lark:
     # keyword terminals outrank the generic WORD regex — so `the sum of ...` tokenises as the
     # operation while `a flower` stays a constant. WORD therefore needs no keyword enumeration.
     return Lark(
-        _GRAMMAR_PATH.read_text(),
+        _GRAMMAR,
         parser="earley",
         lexer="dynamic",
         start=_START_SYMBOLS,

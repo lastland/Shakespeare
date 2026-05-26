@@ -35,6 +35,17 @@ def test_adjectives() -> None:
     assert not vocab.is_adjective("flower")
 
 
+def test_negative_adjectives_are_a_subset() -> None:
+    vocab = load()
+    assert vocab.is_negative_adjective("rotten")  # negative
+    assert vocab.is_negative_adjective("ROTTEN")  # case-insensitive
+    assert not vocab.is_negative_adjective("cunning")  # positive
+    assert not vocab.is_negative_adjective("big")  # neutral
+    assert not vocab.is_negative_adjective("flower")  # not an adjective
+    # Every negative adjective is also a (general) adjective.
+    assert vocab.negative_adjectives <= vocab.adjectives
+
+
 def test_character_names() -> None:
     vocab = load()
     assert vocab.is_character_name("Romeo")

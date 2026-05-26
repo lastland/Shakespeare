@@ -32,12 +32,15 @@ from spl.frontend.ast import (
     InputChar,
     InputNumber,
     Line,
+    MoreComparative,
     Number,
     OutputChar,
     OutputNumber,
     Program,
     PronounValue,
     Question,
+    Recall,
+    Remember,
     Statement,
     UnaryOp,
 )
@@ -130,10 +133,17 @@ class _Analyzer:
             case Assignment(value):
                 return Assignment(self._fold_expr(value))
             case Question(left, right, comparison, negated):
-                return Question(self._fold_expr(left), self._fold_expr(right), comparison, negated)
+                return Question(
+                    self._fold_expr(left),
+                    self._fold_expr(right),
+                    self._resolve_comparison(comparison),
+                    negated,
+                )
             case Conditional(on_true, body):
                 return Conditional(on_true, self._fold_statement(body))
-            case OutputNumber() | OutputChar() | InputNumber() | InputChar() | Goto():
+            case Remember(value):
+                return Remember(self._fold_expr(value))
+            case OutputNumber() | OutputChar() | InputNumber() | InputChar() | Goto() | Recall():
                 return stmt
 
     def _fold_expr(self, expr: Expr) -> Expr:
@@ -147,6 +157,20 @@ class _Analyzer:
             case PronounValue() | Number() | CharacterRef():
                 return expr
 
+    def _resolve_comparison(self, comparison: str | MoreComparative) -> str:
+        """Resolve a `more <adjective> than` marker to "gt"/"lt"; pass plain strings through.
+
+        Direction follows the adjective's sign (mirrors how constants classify nouns): a negative
+        adjective means less-than, any other adjective means greater-than. An unknown adjective
+        raises, matching the strict treatment of unknown adjectives in constants (ADR-0001).
+        """
+        if isinstance(comparison, MoreComparative):
+            adjective = comparison.adjective
+            if not self.vocab.is_adjective(adjective):
+                raise AnalysisError(f"unknown adjective: {adjective!r}")
+            return "lt" if self.vocab.is_negative_adjective(adjective) else "gt"
+        return comparison
+
     def _fold_constant(self, words: tuple[str, ...]) -> Expr:
         """Fold to a value (noun phrase) or a CharacterRef (words naming a declared character)."""
         joined = " ".join(words)
@@ -155,6 +179,15 @@ class _Analyzer:
         character = self._match_character(joined)
         if character is not None:
             return CharacterRef(character)
+        # Articled character name (issue 09, facet 2): in value position the determiner of a name
+        # like "the Ghost" is dropped by the constant rule, leaving just "Ghost". A leading "the"
+        # only ever distinguishes a "The X" character (the reference has no "A X" names), so retry
+        # the match with "the" re-prepended BEFORE the noun-phrase fallback. This runs only after a
+        # bare match fails, so an ordinary noun like "the King" (no such character declared) still
+        # falls through to its constant value rather than being mis-read as a character.
+        articled = self._match_character(f"the {joined}")
+        if articled is not None:
+            return CharacterRef(articled)
         return Number(self._noun_phrase_value(words))
 
     def _match_character(self, text: str) -> str | None:

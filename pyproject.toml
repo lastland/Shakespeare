@@ -18,6 +18,18 @@ spl = "spl.cli:main"
 requires = ["uv_build>=0.11.14,<0.12.0"]
 build-backend = "uv_build"
 
+[tool.uv.build-backend]
+# The interpreter loads two kinds of non-Python data at runtime: the Lark grammar
+# (spl/frontend/grammar.lark) and the vocabulary word-lists (spl/backend/data/*.txt).
+# uv_build packages files in the module root into the wheel automatically, but the source
+# distribution only ships them when listed here. Declaring them explicitly keeps both
+# artifacts in sync and documents that these globs are load-bearing package data.
+# Patterns are anchored at the project root, so they include the `src/` prefix.
+source-include = [
+    "src/spl/frontend/*.lark",
+    "src/spl/backend/data/*.txt",
+]
+
 [dependency-groups]
 dev = [
     "pytest>=8",
@@ -41,4 +53,10 @@ reportMissingTypeStubs = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-q"
+# Deselect the opt-in differential suite by default so `uv run pytest` stays reference-free and
+# never imports shakespearelang. Run it explicitly with `uv run --with shakespearelang pytest -m
+# differential`.
+addopts = "-q -m 'not differential'"
+markers = [
+    "differential: cross-check our interpreter against the shakespearelang oracle (opt-in; needs `--with shakespearelang`)",
+]

@@ -1,6 +1,6 @@
 # Verify integer division / remainder sign convention against the reference
 
-Status: needs-info
+Status: resolved
 
 `src/spl/backend/interpreter.py` implements `quotient` with `_trunc_div` (truncation toward zero,
 C / spl2c semantics) and `remainder` as `left - trunc_div(left, right) * right`. Python's own `//`

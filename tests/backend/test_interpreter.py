@@ -124,6 +124,97 @@ def test_breakpoint_is_ignored() -> None:
     assert out == "1"
 
 
+# ---- full comparative set (issue 03) ----
+
+
+def _question_branch(comparative: str, *, romeo: str, juliet: str) -> str:
+    """Set Juliet := `juliet`, ask `Am I <comparative> you?` (I=Romeo via Juliet's value... ),
+
+    then output on the true branch. We drive both operands through assignments so each
+    comparative kind is exercised against known values.
+    """
+    return run_scene(
+        "[Enter Romeo and Juliet]\n"
+        f"Romeo: You are {juliet}. "
+        f"Are you {comparative} {romeo}? If so, open your heart!"
+    )
+
+
+def test_bigger_than_is_greater_than() -> None:
+    # you(Juliet)=2 ; "a cat"=1 ; 2 > 1 true -> prints 2
+    assert _question_branch("bigger than", romeo="a cat", juliet="a happy cat") == "2"
+
+
+def test_smaller_than_is_less_than() -> None:
+    # you=1 ; "a happy cat"=2 ; 1 < 2 true -> prints 1
+    assert _question_branch("smaller than", romeo="a happy cat", juliet="a cat") == "1"
+
+
+def test_punier_than_is_less_than() -> None:
+    assert _question_branch("punier than", romeo="a happy cat", juliet="a cat") == "1"
+
+
+def test_worse_than_is_less_than() -> None:
+    assert _question_branch("worse than", romeo="a happy cat", juliet="a cat") == "1"
+
+
+def test_fresher_friendlier_nicer_jollier_are_greater_than() -> None:
+    for word in ("fresher than", "friendlier than", "nicer than", "jollier than"):
+        assert _question_branch(word, romeo="a cat", juliet="a happy cat") == "2"
+
+
+def test_neutral_as_adjective_as_is_equality() -> None:
+    # you=1 ; "a cat"=1 ; equal -> prints 1
+    assert _question_branch("as good as", romeo="a cat", juliet="a cat") == "1"
+
+
+def test_more_positive_adjective_is_greater_than() -> None:
+    # you=2 > 1 -> true
+    assert _question_branch("more cunning than", romeo="a cat", juliet="a happy cat") == "2"
+
+
+def test_more_negative_adjective_is_less_than() -> None:
+    # you=1 < 2 -> true
+    assert _question_branch("more rotten than", romeo="a happy cat", juliet="a cat") == "1"
+
+
+def test_negated_better_than_inverts() -> None:
+    # you=1 ; "a happy cat"=2 ; 1 > 2 is false, negated -> true -> prints 1
+    assert _question_branch("not better than", romeo="a happy cat", juliet="a cat") == "1"
+
+
+# ---- stacks: Remember / Recall (issue 02) ----
+
+
+def test_remember_then_recall_roundtrips_through_the_stack() -> None:
+    # Romeo addresses Juliet: push 1 onto Juliet's stack, overwrite her value with 5, then Recall
+    # pops the stack back into her value. Output 1.
+    out = run_scene(
+        "[Enter Romeo and Juliet]\n"
+        "Romeo: You are a flower. Remember you! "  # push Juliet's value (1) onto Juliet's stack
+        "You are the sum of a flower and the sum of a flower and the sum of a flower and a flower. "
+        "Recall your buried memory! Open your heart!"
+    )
+    assert out == "1"
+
+
+def test_recall_is_lifo() -> None:
+    # Push 1 then 2 onto Juliet's stack; two Recalls pop 2 then 1.
+    out = run_scene(
+        "[Enter Romeo and Juliet]\n"
+        "Romeo: You are a flower. Remember you! "  # push 1
+        "You are the sum of a flower and a flower. Remember you! "  # push 2
+        "Recall it! Open your heart! "  # pop 2
+        "Recall it! Open your heart!"  # pop 1
+    )
+    assert out == "21"
+
+
+def test_recall_from_empty_stack_raises() -> None:
+    with pytest.raises(RuntimeSplError, match="empty stack"):
+        run_scene("[Enter Romeo and Juliet]\nRomeo: Recall your nonexistent past!")
+
+
 # ---- dynamic errors (D2) ----
 
 

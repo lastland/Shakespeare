@@ -28,5 +28,24 @@ This is surprising (a reader expects the vocabulary to live in the grammar) and 
 - The grammar cannot reject an unknown or miscategorised word; that check moves to the analyzer.
 - Multi-word character names ("Lady Macbeth", "John of Gaunt") are matched by a single `NAME`
   terminal (capitalized words + connective "of") and validated as a joined string by the analyzer.
-- Capitalized SPL nouns (`Lord`, `King`, `Heaven`) currently collide with `NAME` and are not yet
-  usable in constants — a known phase-1 limitation tracked for phase 1.5.
+- Capitalized SPL nouns (`Lord`, `King`, `Heaven`) lex as `NAME` (they look like names); the
+  analyzer classifies a capitalized word as a noun when it does not name a declared Character, so
+  `a King` folds to a Constant. (Resolved in phase 1.5; an earlier draft listed this as an open
+  limitation.)
+- Gotos accept **act or scene** targets, following the official report ("there is no way to refer
+  to a specific scene in another act — you have to settle for jumping to the act itself").
+  `shakespearelang` restricts gotos to scenes only, so act-gotos are a spec-faithful superset that
+  cannot be cross-checked against the oracle (it parse-errors on them) — see the issue-06 allow-list.
+  Scene gotos resolve within the current act, matching both the spec and the oracle.
+- Some character names begin with "The" (e.g. `The Ghost`) and appear lowercased in source
+  (`[Enter the Ghost ...]`, `more cunning than the Ghost`). Rather than make `NAME`
+  case-insensitive — which would dissolve the `NAME`/`WORD` split and let `romeo` lex as a name —
+  the lowercase article is handled in two narrow places that keep `NAME` purely capitalized:
+  (1) the `name` *rule* takes an optional leading article (`the`/`a`/`an`) and the
+  transformer normalizes the result the way the reference's `normalize_name` does
+  (`.title().replace(" Of ", " of ")`), so `the Ghost` → `The Ghost`, idempotent on already-correct
+  names; (2) in value position the determiner is dropped by the `constant` rule, so the analyzer —
+  after a bare character match fails and before the noun-phrase fallback — retries the match with
+  `the` re-prepended (the reference has no `A X`/`An X` character names). The declared-vs-undeclared
+  decision stays the analyzer's: `the King` (no such character) falls through to the constant
+  value, while `the Ghost` (declared) becomes a character reference.

@@ -19,13 +19,19 @@
 
 // ========================= rules =========================
 
-play: COMMENT "." personae act+
+// The title COMMENT (and each section label's) may end with ANY sentence terminator, not just
+// "." (reference EBNF: title text is `text_before_punctuation ("!" | ".")` and likewise for the
+// act/scene/persona labels). The COMMENT terminal already stops at any of .!?[], so `_title_end`
+// just consumes whichever terminator appears.
+play: COMMENT _title_end personae act+
 
 personae: persona+
-persona: name "," COMMENT "."
+persona: name "," COMMENT _title_end
 
-act: ACT roman ":" COMMENT "." scene+
-scene: SCENE roman ":" COMMENT "." line*
+act: ACT roman ":" COMMENT _title_end scene+
+scene: SCENE roman ":" COMMENT _title_end line*
+
+_title_end: "." | "!" | "?"
 
 ?line: stage_direction | dialogue
 
@@ -46,6 +52,8 @@ sentence: statement ("." | "!" | "?")
           | question
           | conditional
           | goto
+          | remember
+          | recall
 
 // Assignment targets the addressee (second person). `be` and the "as ADJ as" simile are both
 // optional flavour (the reference grammar allows "Thou nothing." with neither).
@@ -53,7 +61,8 @@ assignment: _second _be? (AS WORD AS)? value
 
 _second: YOU | THEE | THOU | THYSELF | YOURSELF
 _be: AM | ARE | ART | BE | IS
-_poss: YOUR | THY
+// `thine` joins `thy`/`your` as a second-person possessive (reference EBNF).
+_poss: YOUR | THY | THINE
 
 open_stmt: OPEN _poss HEART        -> output_number
          | OPEN _poss MIND         -> input_char
@@ -63,12 +72,30 @@ listen_stmt: LISTEN TO _poss HEART -> input_number
 question: _be value comparison value
 comparison: comp_kind      -> cmp_positive
           | NOT comp_kind  -> cmp_negated
-comp_kind: AS WORD AS  -> eq
-         | BETTER THAN -> gt
-         | WORSE THAN  -> lt
+// Comparatives (issue 03). Bare positive words -> gt, bare negative words -> lt, `as ADJ as` ->
+// eq, and `more WORD than` whose direction depends on the adjective's sign (resolved by the
+// analyzer, since the grammar carries no vocabulary — ADR-0002). "less" is intentionally omitted.
+comp_kind: AS WORD AS    -> eq
+         | BETTER THAN    -> gt
+         | BIGGER THAN    -> gt
+         | FRESHER THAN   -> gt
+         | FRIENDLIER THAN -> gt
+         | NICER THAN     -> gt
+         | JOLLIER THAN   -> gt
+         | WORSE THAN     -> lt
+         | PUNIER THAN    -> lt
+         | SMALLER THAN   -> lt
+         | MORE WORD THAN -> more_than
 
 conditional: IF SO ","? statement  -> if_so
            | IF NOT ","? statement -> if_not
+
+// Stacks (issue 02). Both target the ADDRESSEE. `Remember VALUE` pushes; `Recall ...` pops, the
+// trailing text being an ignorable comment (optional, matching the reference's empty-allowed
+// text_before_punctuation). REMEMBER/RECALL are keywords so they win over NAME at statement
+// position even though they are capitalized (see the terminals note below).
+remember: REMEMBER value
+recall: RECALL COMMENT?
 
 goto: _lead (RETURN | PROCEED) TO target
 _lead: LET US | WE SHALL | WE MUST
@@ -97,9 +124,15 @@ expression.2: THE SUM OF value AND value                              -> sum
 // (`NAME`) — a capitalized noun like `Lord`, or a character name used as a value like `Romeo`.
 // The analyzer classifies the whole thing (character ref vs noun phrase, incl. multi-word nouns).
 constant: _det? (WORD | NAME)+
-_det: A | AN | THE | MY | MINE | YOUR | THY | HIS | HER | ITS | THEIR
+_det: A | AN | THE | MY | MINE | YOUR | THY | THINE | HIS | HER | ITS | THEIR
 
-name: NAME
+// A character name may carry a leading lowercase article in real programs ("[Enter the Ghost]"),
+// because some SPL character names begin with "The" (e.g. "The Ghost") and are written lowercase
+// here (issue 09). The article is absorbed into the name and the whole thing is normalized to the
+// declared form (e.g. "the Ghost" -> "The Ghost") in the transformer. This is the ONLY way the
+// generic NAME terminal stays purely capitalized (ADR-0002): we widen the `name` RULE, not NAME.
+name: _name_article? NAME
+_name_article: A | AN | THE
 roman: ROMAN
 
 // ========================= terminals =========================
@@ -143,6 +176,7 @@ THYSELF: /thyself(?![a-z])/i
 YOURSELF: /yourself(?![a-z])/i
 YOUR: /your(?![a-z])/i
 THY: /thy(?![a-z])/i
+THINE: /thine(?![a-z])/i
 MY: /my(?![a-z])/i
 MINE: /mine(?![a-z])/i
 HIS: /his(?![a-z])/i
@@ -171,7 +205,15 @@ AND: /and(?![a-z])/i
 AS: /as(?![a-z])/i
 THAN: /than(?![a-z])/i
 BETTER: /better(?![a-z])/i
+BIGGER: /bigger(?![a-z])/i
+FRESHER: /fresher(?![a-z])/i
+FRIENDLIER: /friendlier(?![a-z])/i
+NICER: /nicer(?![a-z])/i
+JOLLIER: /jollier(?![a-z])/i
 WORSE: /worse(?![a-z])/i
+PUNIER: /punier(?![a-z])/i
+SMALLER: /smaller(?![a-z])/i
+MORE: /more(?![a-z])/i
 
 // --- I/O ---
 OPEN: /open(?![a-z])/i
@@ -179,6 +221,13 @@ SPEAK: /speak(?![a-z])/i
 LISTEN: /listen(?![a-z])/i
 HEART: /heart(?![a-z])/i
 MIND: /mind(?![a-z])/i
+
+// --- stacks (issue 02) ---
+// Capitalized in real programs ("Remember", "Recall"), so they overlap NAME's /[A-Z][a-z]+/.
+// As named keyword terminals offered at statement position they win over NAME there; a value's
+// NAME (a character used as a value) is offered only after the keyword, so there is no conflict.
+REMEMBER: /remember(?![a-z])/i
+RECALL: /recall(?![a-z])/i
 
 // --- vocabulary + structural regex terminals ---
 // A character reference: capitalized words, optionally joined by lowercase "of"
@@ -188,8 +237,11 @@ ROMAN: /[IVXLCDM]+/
 // A vocabulary word (noun/adjective) — fully generic, no keywords baked in (ADR-0002).
 // Allows internal apostrophes/hyphens so words like "summer's" and "half-witted" are one token.
 WORD: /[a-z]+(?:['-][a-z]+)*/
-// Free text for the title, persona descriptions, and act/scene titles.
-COMMENT.5: /[^.!?\[\]\n]+/
+// Free text for the title, persona descriptions, and act/scene titles. Runs until the next
+// sentence terminator REGARDLESS of line breaks (issue 01): SPL comments — including persona
+// descriptions and act/scene titles — may wrap across lines, so newlines are NOT excluded. A
+// program missing its terminating "." lets a COMMENT eat ahead; that program is malformed.
+COMMENT.5: /[^.!?\[\]]+/
 
 %import common.WS
 %ignore WS

@@ -1,6 +1,6 @@
 # Write the project README
 
-Status: ready-for-human
+Status: resolved
 
 `README.md` is empty. Add: what the project is (a typed-Python SPL interpreter), how to install
 (`uv sync`) and run (`uv run spl program.spl` / `python -m spl program.spl`), the frontend/backend

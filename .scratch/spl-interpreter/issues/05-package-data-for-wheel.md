@@ -1,6 +1,6 @@
 # Package grammar.lark and vocabulary data files for wheel installs
 
-Status: ready-for-agent
+Status: resolved
 
 `src/spl/frontend/parser.py` loads `grammar.lark` and `src/spl/backend/vocabulary.py` loads
 `backend/data/*.txt` via `Path(__file__).parent`. This works for an editable `uv sync` install but

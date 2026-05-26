@@ -49,9 +49,23 @@ neutral noun) or −1 (negative noun); each adjective doubles the magnitude; "no
 _Avoid_: literal, number, term
 
 **Question**:
-A comparison line ("better than", "worse than", "as ADJ as") that sets a boolean. The following
-"If so" / "If not" line executes conditionally on the most recent Question's result.
+A comparison line that sets a boolean. The comparison is a positive comparative ("better",
+"bigger", "fresher", "friendlier", "nicer", "jollier", or "more ADJ") → greater-than; a negative
+comparative ("worse", "punier", "smaller", or "more NEGATIVE-ADJ") → less-than; or "as ADJ as" →
+equality. "not" inverts any of these. The following "If so" / "If not" line executes conditionally
+on the most recent Question's result.
 _Avoid_: condition, test, predicate
+
+**Stack**:
+A LIFO stack of Values that every Character owns, separate from its single Value. Begins empty.
+Manipulated only through the Remember and Recall operations.
+_Avoid_: list, store, heap
+
+**Remember / Recall**:
+The two Stack operations, both addressed to the Addressee. "Remember VALUE" pushes a Value onto the
+Addressee's Stack; "Recall ..." (the trailing text is a comment) pops the Addressee's Stack into the
+Addressee's Value. Recalling from an empty Stack is a runtime error.
+_Avoid_: push/pop (those are the mechanism, not the in-language terms)
 
 **Character reference**:
 Using a Character's name in an expression to read that Character's current Value (e.g. "the sum

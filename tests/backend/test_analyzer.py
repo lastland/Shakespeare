@@ -17,6 +17,7 @@ from spl.frontend.ast import (
     Goto,
     Number,
     Program,
+    Question,
 )
 from spl.frontend.parser import parse
 
@@ -59,6 +60,21 @@ def test_character_name_folds_to_reference() -> None:
     assert _first_statement(program) == Assignment(CharacterRef("Juliet"))
 
 
+def test_articled_character_name_in_value_folds_to_reference() -> None:
+    # "the Ghost" in value position: the determiner "the" is re-prepended to match the declared
+    # character "The Ghost" (issue 09, facet 2). Used in primes.spl ("more cunning than the Ghost").
+    program = _analyze("Romeo: You are the Ghost.", personae=("Romeo", "Juliet", "The Ghost"))
+    assert _first_statement(program) == Assignment(CharacterRef("The Ghost"))
+
+
+def test_article_before_undeclared_capitalized_word_stays_a_constant() -> None:
+    # Negative case: when the capitalized word after an article does NOT name a declared character,
+    # it must fold as a constant noun, not a character reference. "King" is a positive noun (=1);
+    # here no character "The King" is declared, so "the King" stays the constant 1.
+    program = _analyze("Romeo: You are the King.")
+    assert _first_statement(program) == Assignment(Number(1))
+
+
 def test_capitalized_noun() -> None:
     program = _analyze("Romeo: You are a King.")  # King is a positive noun, not a character here
     assert _first_statement(program) == Assignment(Number(1))
@@ -73,6 +89,13 @@ def test_multiword_noun_with_adjective() -> None:
 def test_possessive_determiner_is_ignored() -> None:
     program = _analyze("Romeo: You are his horse.")  # horse = +1
     assert _first_statement(program) == Assignment(Number(1))
+
+
+def test_thine_possessive_determiner_is_ignored() -> None:
+    # `thine` is a second-person possessive determiner (not an adjective); it is dropped, leaving
+    # the noun. (sierpinski.spl uses "thine goat".) goat = -1 (negative noun).
+    program = _analyze("Romeo: You are thine goat.")
+    assert _first_statement(program) == Assignment(Number(-1))
 
 
 def test_unknown_noun_raises() -> None:
@@ -99,6 +122,40 @@ def test_unknown_character_in_personae_raises() -> None:
 def test_duplicate_persona_raises() -> None:
     with pytest.raises(AnalysisError, match="declared twice"):
         _analyze("Romeo: You are nothing.", personae=("Romeo", "Romeo"))
+
+
+# ---- `more <adjective> than` resolution (issue 03) ----
+
+
+def _first_question(body: str) -> Question:
+    program = _analyze(body)
+    dialogue = next(line for line in program.lines if isinstance(line, Dialogue))
+    question = next(s for s in dialogue.statements if isinstance(s, Question))
+    return question
+
+
+def test_more_positive_adjective_resolves_to_gt() -> None:
+    # "cunning" is a positive adjective -> greater-than.
+    question = _first_question("Romeo: Am I more cunning than you?")
+    assert question.comparison == "gt"
+
+
+def test_more_neutral_adjective_resolves_to_gt() -> None:
+    # "big" is a neutral adjective -> greater-than (our documented superset over the reference,
+    # which only allows positive adjectives after "more").
+    question = _first_question("Romeo: Am I more big than you?")
+    assert question.comparison == "gt"
+
+
+def test_more_negative_adjective_resolves_to_lt() -> None:
+    # "rotten" is a negative adjective -> less-than.
+    question = _first_question("Romeo: Am I more rotten than you?")
+    assert question.comparison == "lt"
+
+
+def test_more_unknown_adjective_raises() -> None:
+    with pytest.raises(AnalysisError, match="unknown adjective"):
+        _analyze("Romeo: Am I more florpy than you?")
 
 
 # ---- gotos + flattening across multiple scenes ----

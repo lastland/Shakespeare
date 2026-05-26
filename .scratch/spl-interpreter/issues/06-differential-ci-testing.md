@@ -1,6 +1,6 @@
 # Live differential testing against shakespearelang in CI
 
-Status: ready-for-agent
+Status: resolved
 
 Deferred feature from decision D8. Today the golden outputs are committed files (confirmed against
 the reference once, by hand). A CI job could run each in-spec program through both our interpreter

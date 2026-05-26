@@ -18,10 +18,27 @@ from spl.errors import RuntimeSplError
 
 @dataclass
 class Character:
-    """A named value-holder. Mutable: assignment and arithmetic update `value` in place."""
+    """A named value-holder. Mutable: assignment and arithmetic update `value` in place.
+
+    Each Character also owns a LIFO `stack`, manipulated only by Remember (push) and Recall (pop).
+    """
 
     value: int = 0
     stack: list[int] = field(default_factory=list[int])
+
+    def push(self, value: int) -> None:
+        """Push `value` onto this character's stack (the Remember operation)."""
+        self.stack.append(value)
+
+    def pop(self) -> None:
+        """Pop the top of the stack into `value` (the Recall operation).
+
+        Popping an empty stack is a runtime error (ADR-0001; matches the reference's
+        "Tried to pop from an empty stack.").
+        """
+        if not self.stack:
+            raise RuntimeSplError("tried to recall from an empty stack")
+        self.value = self.stack.pop()
 
 
 class Stage:

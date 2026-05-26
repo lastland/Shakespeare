@@ -1,6 +1,6 @@
 # Support the full set of comparatives
 
-Status: ready-for-agent
+Status: resolved
 
 Phase 1 supports only `better than` (>), `worse than` (<), and `as ADJ as` (==). The reference
 grammar (`shakespeare.ebnf`) has more:

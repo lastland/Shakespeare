@@ -1,6 +1,6 @@
 # Multi-line comments / persona descriptions fail to parse
 
-Status: ready-for-agent
+Status: resolved
 
 The `COMMENT` terminal in `src/spl/frontend/grammar.lark` is `/[^.!?\[\]\n]+/` — it excludes
 newlines, so a title, persona description, or act/scene title that wraps across lines cannot be
