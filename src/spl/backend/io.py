@@ -13,9 +13,9 @@ Per ADR-0001/ADR-0003 the undefined cases are handled strictly. Character input 
 -> -1 carve-out (the looping programs depend on it as a protocol). Numeric input parses like
 spl2c's `scanf("%d")` (leading whitespace skip, optional sign, digit run) but *raises*
 `RuntimeSplError` at EOF and on non-numeric input rather than returning a sentinel, and consumes
-one trailing newline after the digits (a bare `\n` or a `\r\n` pair). On the non-numeric error
-path it pushes the offending character back before raising, so the stream stays faithful to the
-`scanf("%d")` model. Writing a character whose value is not a valid Unicode code point also raises
+one bare `\n` after the digits (a `\r`, like any non-`\n` terminator, is left for the next read --
+matching the reference). On the non-numeric error path it pushes the offending character back
+before raising. Writing a character whose value is not a valid Unicode code point also raises
 rather than coercing it.
 """
 
@@ -42,9 +42,10 @@ class IO(Protocol):
         """Read a base-10 integer from input.
 
         Parses spl2c-style (leading whitespace skip, optional sign, digit run) but raises
-        `RuntimeSplError` at EOF and on non-numeric input (ADR-0003), and consumes one trailing
-        newline (a bare `\\n` or a `\\r\\n` pair) after the digits. On the non-numeric error path
-        the offending character is pushed back before raising, so it stays readable.
+        `RuntimeSplError` at EOF and on non-numeric input (ADR-0003), and consumes one bare `\\n`
+        after the digits (a `\\r` is left for the next read, matching the reference). On the
+        non-numeric error path the offending character is pushed back before raising, so it stays
+        readable.
         """
         ...
 
@@ -103,9 +104,9 @@ class _CharReader:
 
         Parsing follows spl2c's `scanf("%d")` (ADR-0003): a leading whitespace run is skipped, an
         optional sign is accepted (so negatives parse), then the digit run is read. One trailing
-        newline -- either a bare `\\n` or a `\\r\\n` pair -- is consumed as a single terminator, so
-        it does not leak into the next character read; any other terminator is pushed back so it
-        stays available.
+        bare `\\n` is consumed so it does not leak into the next character read; any other
+        terminator -- including a `\\r`, which the reference does not treat as a numeric terminator
+        -- is pushed back so the next character read returns it.
 
         Raises `RuntimeSplError` when no digit is found -- at EOF before any digit, on a sign not
         followed by a digit, or on otherwise non-numeric input. The offending (already-consumed)
@@ -137,16 +138,12 @@ class _CharReader:
                 self._push_back(ch)
             raise RuntimeSplError("no numeric input")
 
-        # Consume one trailing newline as a single terminator: a bare "\n", or a "\r\n" pair (so
-        # CRLF input does not leak a "\r" into the next read). Any other terminator is pushed back.
-        # The pushback buffer holds one char, so to test for "\r\n" we look one char past the "\r":
-        # if it is "\n" both are consumed; otherwise that lookahead char is pushed back and the lone
-        # "\r" (itself whitespace, never a real datum) is dropped rather than leaked.
-        if ch == "\r":
-            nxt = self._next()
-            if nxt != "" and nxt != "\n":
-                self._push_back(nxt)
-        elif ch != "" and ch != "\n":
+        # Consume exactly one bare "\n" terminator; push any other terminator back for the next
+        # read. A "\r" is deliberately NOT a terminator here: the reference (shakespearelang) leaves
+        # a "\r" in the stream after a number, so the next character read returns it (codepoint 13).
+        # Consuming a "\r\n" pair (or dropping a lone "\r") diverges from the oracle on CR-bearing
+        # input -- that was issue 16, which mistook this reference-conformant behavior for a leak.
+        if ch != "" and ch != "\n":
             self._push_back(ch)
 
         return sign * int("".join(digits))

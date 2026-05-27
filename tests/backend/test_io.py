@@ -127,25 +127,34 @@ def test_buffer_read_number_consumes_one_trailing_newline() -> None:
     assert io_.read_char() == ord("X")
 
 
-def test_buffer_read_number_consumes_trailing_crlf() -> None:
-    # A trailing "\r\n" is consumed as one terminator so the "\r" does not leak (ADR-0003).
-    io_ = BufferIO("42\r\nX")
-    assert io_.read_number() == 42
-    assert io_.read_char() == ord("X")
-
-
-def test_buffer_read_number_lone_cr_does_not_leak() -> None:
-    # A lone "\r" (not followed by "\n") terminates the number; it is dropped, not leaked, and the
-    # following real character is preserved.
+def test_buffer_read_number_leaves_carriage_return() -> None:
+    # Conformance regression guard (issue 16 revert): a "\r" after the digits is NOT a terminator.
+    # The reference's numeric read leaves it, so the next char read returns it (codepoint 13), then
+    # the real "X". Consuming/dropping the "\r" diverged from the oracle (it returns 13 here too).
     io_ = BufferIO("42\rX")
     assert io_.read_number() == 42
+    assert io_.read_char() == 13  # the "\r" is preserved, matching shakespearelang
     assert io_.read_char() == ord("X")
 
 
-def test_buffer_read_number_trailing_cr_at_eof() -> None:
-    # A "\r" immediately before EOF terminates the number and leaves the stream at EOF.
+def test_buffer_read_number_leaves_cr_before_lf() -> None:
+    # CRLF input: read_number stops at the "\r" and pushes it back, consuming neither the "\r" nor
+    # the "\n". The next reads return "\r" (13), then "\n" (10), then "X" -- the oracle leaves the
+    # "\r" rather than swallowing the pair (verified against shakespearelang). Swallowing the pair
+    # was the issue-16 conformance regression.
+    io_ = BufferIO("42\r\nX")
+    assert io_.read_number() == 42
+    assert io_.read_char() == 13
+    assert io_.read_char() == ord("\n")
+    assert io_.read_char() == ord("X")
+
+
+def test_buffer_read_number_carriage_return_at_eof() -> None:
+    # A "\r" immediately before EOF is left in the stream like any other "\r": the next read returns
+    # it (13), then EOF.
     io_ = BufferIO("42\r")
     assert io_.read_number() == 42
+    assert io_.read_char() == 13
     assert io_.read_char() == -1
 
 
@@ -228,10 +237,12 @@ def test_stdio_read_number_consumes_one_trailing_newline() -> None:
     assert stdio.read_char() == ord("X")
 
 
-def test_stdio_read_number_consumes_trailing_crlf() -> None:
+def test_stdio_read_number_leaves_carriage_return() -> None:
+    # StdIO mirror of the BufferIO conformance case: a "\r" after the digits is preserved (13),
+    # matching the reference, rather than being consumed as part of the terminator.
     stdio = StdIO(input=io.StringIO("42\r\nX"))
     assert stdio.read_number() == 42
-    assert stdio.read_char() == ord("X")
+    assert stdio.read_char() == 13
 
 
 def test_stdio_read_number_error_preserves_offending_char() -> None:

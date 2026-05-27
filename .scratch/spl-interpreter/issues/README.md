@@ -29,7 +29,7 @@ COMMENT terminator vs. the reference's `text_before_punctuation` (gaps around [0
 - [19](19-title-question-mark-terminator.md) — title/section labels accept `?` as a terminator; the reference does not — **resolved** (decision: keep `?` as a friendly superset; documented divergence — ADR-0005)
 
 Input I/O (gaps in [09](09-input-error-semantics.md)):
-- [16](16-read-number-crlf-handling.md) — `read_number` leaks a carriage return on CRLF input — **resolved** (trailing `\r\n` consumed as one terminator)
+- [16](16-read-number-crlf-handling.md) — `read_number` leaks a carriage return on CRLF input — **resolved** (misdiagnosis: the reference also leaves `\r`, so the CRLF "fix" was a conformance regression and has been reverted)
 - [21](21-read-number-discards-char-on-error.md) — `read_number` discards the consumed terminator on the non-numeric error path — **resolved** (offending char pushed back before raising)
 
 Articled names (gaps in [12](12-articled-character-names.md)):

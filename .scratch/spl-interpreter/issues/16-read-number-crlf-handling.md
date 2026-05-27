@@ -34,10 +34,28 @@ None - can start immediately. (Related: same reader as [21](21-read-number-disca
 
 ## Resolution
 
-`_CharReader.read_number` now treats a trailing `\r\n` as one terminator: when the digit run ends
-on `\r` it looks one char past it; if that char is `\n` both are consumed, otherwise the lookahead
-char is pushed back and the lone `\r` (itself whitespace, never a real datum) is dropped rather than
-leaked. A bare `\n` still works unchanged, so `echo.spl` stays byte-exact. Added
-`test_buffer_read_number_consumes_trailing_crlf` (the `"42\r\nX"` repro now reads `X`), plus
-`test_buffer_read_number_lone_cr_does_not_leak`, `test_buffer_read_number_trailing_cr_at_eof`, and a
-`StdIO` mirror. Full + differential suites green.
+**Reverted — the original premise above was a misdiagnosis (conformance regression).**
+
+The first fix made `read_number` consume a trailing `\r\n` as one terminator (and drop a lone `\r`).
+A later max-effort review proved this *diverges* from the reference. `shakespearelang` does **not**
+treat a `\r` as a numeric terminator either: it leaves the `\r` in the stream, so the next character
+read returns codepoint 13. Verified end-to-end on a number-then-character program (`Listen to your
+heart` / `Open your mind` / `Open your heart`):
+
+| raw stdin | `spl` after the fix | `spl` pre-fix (`16e2ebe`) | `shakespeare` oracle |
+| --- | --- | --- | --- |
+| `42\r\nX` | `X` (88) ✗ | `\r` (13) ✓ | `\r` (13) |
+| `42\rX`   | `X` (88) ✗ | `\r` (13) ✓ | `\r` (13) |
+
+So the pre-fix interpreter already matched the oracle; the "fix" was a regression. The differential
+suite never caught it because no bundled `.in` uses CRLF **and** the harness reads `.in` via
+`Path.read_text` (universal newlines), which strips `\r` before feeding either side — so the suite
+is structurally blind to CRLF divergence.
+
+The CRLF branch has been reverted: `read_number` again consumes one bare `\n` and pushes any other
+terminator (including `\r`) back, matching the reference. The three CRLF unit tests were replaced
+with conformance guards that pin the `\r` as *preserved*: `test_buffer_read_number_leaves_carriage_return`,
+`test_buffer_read_number_leaves_cr_before_lf`, `test_buffer_read_number_carriage_return_at_eof`, and
+the `StdIO` mirror `test_stdio_read_number_leaves_carriage_return`. Issue 21's error-path pushback
+(a separate, behaviorally-inert change to the same method) is unaffected. Full + differential suites
+green.
