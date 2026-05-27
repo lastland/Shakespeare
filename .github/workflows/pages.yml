@@ -1,0 +1,65 @@
+name: Deploy web playground to Pages
+
+# Builds web/ (the pure-frontend Pyodide playground) and deploys it to GitHub Pages on
+# every push to main. The build's `prebuild` hook (scripts/prepare-assets.mjs) needs BOTH
+# uv (it runs `uv build` for the spl wheel) and Node, and reaches the network to vendor the
+# lark + Pyodide-micropip wheels. COOP/COEP on Pages come from the bundled coi-serviceworker
+# shim (Pages can't set headers); see docs/adr/0009.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Least privilege + the tokens Pages deployment needs.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow one in-flight Pages deploy at a time; don't cancel a running deploy (GitHub's
+# recommended setting for the pages group).
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      UV_PYTHON: "3.13"
+      # Project Pages serve under https://lastland.github.io/Shakespeare/, so the build must
+      # use that subpath as Vite's base. worker.ts + examples.ts resolve every asset via
+      # import.meta.env.BASE_URL, so this is the only place the subpath is configured.
+      VITE_BASE: /Shakespeare/
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v8.1.0   # match ci.yml: no floating v8 tag yet, pin the release
+        with:
+          version: "0.11.14"
+          enable-cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install web deps (locked)
+        run: npm ci
+      - name: Build (prebuild vendors wheels + Pyodide; base = ${{ env.VITE_BASE }})
+        run: npm run build
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -55,15 +55,21 @@ function requestInputSync(): string | null {
 let runProgram: ((src: string, request: () => string | null, emit: (s: string) => void) => void) | null =
   null;
 
+// Served-asset prefix. Equals the Vite `base` (e.g. "/" in dev, "/Shakespeare/" on
+// project GitHub Pages), so fetches resolve under a subpath deploy. The Pyodide FS paths
+// below (/wheels in the virtual FS, and the matching emfs: install URLs) are NOT served
+// assets, so they stay absolute and base-independent.
+const BASE = import.meta.env.BASE_URL;
+
 async function boot() {
-  const pyodide = await loadPyodide({ indexURL: "/pyodide/" });
+  const pyodide = await loadPyodide({ indexURL: `${BASE}pyodide/` });
   await pyodide.loadPackage("micropip");
 
   // Install lark + spl from local wheels written into the Pyodide FS. micropip reads
   // name/version from the PEP 427 filename, so we keep the real names.
   pyodide.FS.mkdirTree("/wheels");
   for (const name of ["lark-1.3.1-py3-none-any.whl", "spl-0.1.0-py3-none-any.whl"]) {
-    const res = await fetch(`/wheels/${name}`);
+    const res = await fetch(`${BASE}wheels/${name}`);
     if (!res.ok) throw new Error(`failed to fetch wheel ${name}: ${res.status}`);
     pyodide.FS.writeFile(`/wheels/${name}`, new Uint8Array(await res.arrayBuffer()));
   }

@@ -11,8 +11,10 @@ const crossOriginIsolationHeaders = {
 
 export default defineConfig({
   plugins: [react()],
-  // Relative base so the build can be deployed under a GitHub Pages subpath later.
-  base: "./",
+  // Served at the root in dev/preview/e2e; the GitHub Pages workflow sets VITE_BASE to the
+  // project subpath ("/Shakespeare/"). worker.ts + examples.ts resolve assets via
+  // import.meta.env.BASE_URL, so a subpath deploy works without further changes.
+  base: process.env.VITE_BASE ?? "/",
   // Pyodide ships a large ESM with guarded `node:` paths; let Vite serve it as-is in dev
   // rather than esbuild-prebundling it (which trips on the node built-ins).
   optimizeDeps: { exclude: ["pyodide"] },
