@@ -1,5 +1,8 @@
 # spl — a typed-Python Shakespeare Programming Language interpreter
 
+[![CI](https://github.com/lastland/Shakespeare/actions/workflows/ci.yml/badge.svg)](https://github.com/lastland/Shakespeare/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/lastland/Shakespeare/branch/main/graph/badge.svg)](https://codecov.io/gh/lastland/Shakespeare)
+
 An interpreter for the [Shakespeare Programming Language](https://esolangs.org/wiki/Shakespeare)
 (Hasselström & Åslund, 2001) — an esoteric language whose programs read like Shakespeare plays.
 Characters are variables, dialogue is computation, and Acts/Scenes are goto labels.
@@ -108,6 +111,11 @@ intentional divergences above:
 ```bash
 uv run --with shakespearelang pytest -m differential
 ```
+
+CI reports line/branch coverage to [Codecov](https://codecov.io/gh/lastland/Shakespeare)
+(`uv run pytest --cov`). Coverage is measured on the **reference-free suite only**: the differential
+harness re-runs the same programs through the same code, so it adds no marginal coverage. Reporting
+is informational — coverage does not gate merges.
 
 Open work and conformance notes are tracked as markdown issues under
 [`.scratch/spl-interpreter/issues/`](.scratch/spl-interpreter/issues/).

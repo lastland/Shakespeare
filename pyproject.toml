@@ -33,6 +33,7 @@ source-include = [
 [dependency-groups]
 dev = [
     "pytest>=8",
+    "pytest-cov>=5",
     "ruff>=0.6",
     "pyright>=1.1.380",
 ]
@@ -60,3 +61,17 @@ addopts = "-q -m 'not differential'"
 markers = [
     "differential: cross-check our interpreter against the shakespearelang oracle (opt-in; needs `--with shakespearelang`)",
 ]
+
+[tool.coverage.run]
+# Coverage is measured on the reference-free default suite only and reported to Codecov
+# (report-only). The opt-in differential suite re-runs the same programs through the same code
+# (test_differential.py `_run_ours` == test_programs.py `_run`; the oracle is a subprocess), so it
+# adds zero marginal coverage and is intentionally not measured. `--cov` is passed in CI, not in
+# addopts, so local `pytest` stays fast; run `uv run pytest --cov` for an ad-hoc local number.
+source = ["spl"]
+branch = true
+omit = ["*/spl/__main__.py"]  # pure `python -m spl` shim; the __main__ guard is untestable in-process
+
+[tool.coverage.report]
+show_missing = true
+precision = 1

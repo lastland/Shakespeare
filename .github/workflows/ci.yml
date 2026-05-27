@@ -37,8 +37,21 @@ jobs:
         run: uv run ruff format --check src tests
       - name: Pyright (strict)
         run: uv run pyright
-      - name: Pytest (default suite; reference-free)
-        run: uv run pytest
+      - name: Pytest (default suite; reference-free) + coverage
+        # Coverage is measured on the reference-free suite only (config in pyproject's
+        # [tool.coverage.run]). The differential suite re-runs the same programs through the same
+        # code, so it adds zero marginal coverage and is intentionally not measured.
+        run: uv run pytest --cov=spl --cov-report=xml
+      - name: Upload coverage to Codecov
+        # Report-only (no gate). Upload once: coverage is identical across 3.13/3.14 (no
+        # version-conditional code), so the 3.14 leg would just duplicate the report.
+        # fail_ci_if_error stays false so a Codecov outage never breaks the green gate.
+        if: matrix.python-version == '3.13'
+        uses: codecov/codecov-action@v6.0.1
+        with:
+          files: ./coverage.xml
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   differential:
     name: differential (oracle cross-check, py3.13)
