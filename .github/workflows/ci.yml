@@ -25,7 +25,7 @@ jobs:
       UV_PYTHON: ${{ matrix.python-version }}
     steps:
       - uses: actions/checkout@v6
-      - uses: astral-sh/setup-uv@v8
+      - uses: astral-sh/setup-uv@v8.1.0   # no floating `v8` major tag yet; pin the exact release
         with:
           version: "0.11.14"   # match local dev + build floor (uv_build>=0.11.14,<0.12.0)
           enable-cache: true
@@ -47,7 +47,7 @@ jobs:
       UV_PYTHON: "3.13"
     steps:
       - uses: actions/checkout@v6
-      - uses: astral-sh/setup-uv@v8
+      - uses: astral-sh/setup-uv@v8.1.0   # no floating `v8` major tag yet; pin the exact release
         with:
           version: "0.11.14"
           enable-cache: true
