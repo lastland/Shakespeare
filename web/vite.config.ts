@@ -13,6 +13,9 @@ export default defineConfig({
   plugins: [react()],
   // Relative base so the build can be deployed under a GitHub Pages subpath later.
   base: "./",
+  // Pyodide ships a large ESM with guarded `node:` paths; let Vite serve it as-is in dev
+  // rather than esbuild-prebundling it (which trips on the node built-ins).
+  optimizeDeps: { exclude: ["pyodide"] },
   server: {
     headers: crossOriginIsolationHeaders,
   },

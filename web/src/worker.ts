@@ -5,6 +5,8 @@
 // programs. Synchronous Python input is satisfied by blocking on a SharedArrayBuffer
 // via Atomics.wait; the main thread fills the buffer in response to `need-input`.
 
+import { loadPyodide } from "pyodide";
+
 import {
   CTRL_LENGTH,
   CTRL_STATUS,
@@ -14,25 +16,12 @@ import {
   type ToWorker,
 } from "./protocol";
 
-interface PyodideInterface {
-  loadPackage(names: string | string[]): Promise<void>;
-  pyimport(name: string): any;
-  runPython(code: string): any;
-  FS: { writeFile(path: string, data: Uint8Array): void; mkdirTree(path: string): void };
-  globals: { get(name: string): any };
-}
-
-// This is a module worker, so importScripts is unavailable. Dynamically import the
-// self-hosted ESM build at its runtime URL (/pyodide/), keeping everything same-origin
-// (a COEP requirement). The bare runtime URL is hidden from Vite's bundler via a
-// computed specifier so it is not rewritten or pre-bundled.
-async function loadPyodideModule(): Promise<
-  (opts: { indexURL: string }) => Promise<PyodideInterface>
-> {
-  const url = "/pyodide/" + "pyodide.mjs";
-  const mod = await import(/* @vite-ignore */ url);
-  return mod.loadPyodide;
-}
+// Pyodide's JS API is bundled from the npm package, so Vite handles it identically in
+// dev and build. The WASM runtime, stdlib, and our wheels load at runtime from the
+// self-hosted, same-origin /pyodide/ + /wheels/ dirs (a COEP requirement) via indexURL.
+// (Importing the glue from /public/ instead breaks `vite dev`: the dev server refuses to
+// transform a public file imported as a module — it only works under build/preview, where
+// public is copied to the served root.)
 
 function post(msg: FromWorker) {
   (self as unknown as Worker).postMessage(msg);
@@ -67,7 +56,6 @@ let runProgram: ((src: string, request: () => string | null, emit: (s: string) =
   null;
 
 async function boot() {
-  const loadPyodide = await loadPyodideModule();
   const pyodide = await loadPyodide({ indexURL: "/pyodide/" });
   await pyodide.loadPackage("micropip");
 
