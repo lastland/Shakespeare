@@ -1,0 +1,127 @@
+# Gap analysis: this interpreter vs. a full implementation of SPL
+
+How far is this interpreter from a *full* implementation of the Shakespeare Programming Language?
+This document records the gap, with evidence. The short answer: against the de-facto reference, the
+interpreter is complete but for **one** construct (`the factorial of`); every other difference is a
+deliberate, recorded divergence (mostly a superset) — plus a few undocumented over-acceptances and
+one stale doc claim.
+
+## Baselines & method
+
+"Full" is measured against two baselines, because they differ:
+
+- **Primary — the de-facto reference.** `zmbc/shakespearelang`'s `shakespeare.ebnf`. This project
+  *declares* it the conformance target (`README.md`, every ADR), and the eight golden programs
+  byte-match its output. This is the right yardstick for "did we implement the language".
+- **Secondary — the original language.** The Hasselström & Åslund report / esolangs / Wikipedia
+  description, which is a strict *superset* of the reference (it has at least one form the reference
+  never implemented). Used to flag where even the reference is incomplete.
+
+Method: the reference EBNF was diffed, rule by rule, against `src/spl/frontend/grammar.lark`,
+`src/spl/backend/analyzer.py`, and `src/spl/backend/vocabulary.py` + `src/spl/backend/data/*.txt`.
+Every empirical claim below was probed against the live parser/analyzer.
+
+## Summary
+
+| Area | Reference (full) | This interpreter | Verdict |
+| --- | --- | --- | --- |
+| Binary arithmetic (sum/difference/product/quotient/remainder) | 5 | 5 | ✅ complete |
+| Unary arithmetic (twice/square/cube/square-root/**factorial**) | 5 | 4 | ❌ **factorial missing** |
+| Comparatives (bare ±, `more ADJ than`, `as ADJ as`) | all | all | ✅ complete |
+| Negated comparisons (`not better than`) | original-spec only | none | ➖ gap vs *original*, matches reference |
+| I/O (4 forms) | 4 | 4 | ✅ complete |
+| Stacks (Remember/Recall) | yes | yes | ✅ complete |
+| Conditionals / gotos / stage directions | yes | yes | ✅ complete (goto is a superset) |
+| Vocabulary (nouns/adjectives/names) | fixed lists | reference-exact | ✅ complete |
+| Runtime semantics for spec-undefined cases | mostly undefined | strict errors | ⚙️ deliberate (ADR-0001/0003) |
+
+Legend: ✅ complete · ❌ genuine gap · ➖ gap only vs the original spec · ⚙️ deliberate divergence.
+
+## G1 — `the factorial of` (the one genuine gap)
+
+The reference `unary_operation` admits `the cube of`, **`the factorial of`**, `the square of`,
+`the square root of`, and `twice`. The grammar's `expression` rule has the other four but no
+factorial (`grammar.lark:127-135`); there is no `FACTORIAL` terminal, and neither analyzer nor
+interpreter knows the op. `README.md` already lists it under "Known gaps".
+
+Confirmed live: a program using `the factorial of a King` raises a `ParseError`, while the parallel
+`the square of a King` parses to `UnaryOp(op='square', …)`.
+
+Reference semantics, for whoever closes this (tracked by **issue 23**): `0! = 1`,
+`n! = n·(n-1)!` for `n ≥ 0`. A negative operand is spec-undefined and should raise per ADR-0001.
+
+## G2 — Negated comparisons (gap vs the *original* spec only)
+
+The original language can invert a test — "not as good as", "not better than". **Both** this
+interpreter (ADR-0004 / issue 13) and the `shakespearelang` reference omit negated questions
+entirely. So the interpreter is *reference-conformant* but not *original-spec-complete* here. The
+`NOT` terminal survives only for the separate `If not, …` conditional (`grammar.lark:99`). Adding
+negated questions would mean diverging from the reference toward the original spec — a product
+decision, not a bug; see ADR-0004 for why it was dropped (it hosted a silent-drop bug).
+
+## Deliberate divergences (recorded — not gaps)
+
+These are intentional and each has an ADR. Most make the accepted language a *superset* of the
+reference; the runtime ones make it *stricter*.
+
+- **Goto targets an act *or* a scene** (`grammar.lark:116-117`); the reference allows scene only.
+  Follows the official report (ADR-0002).
+- **Label terminator accepts `?`** as well as `!`/`.` (ADR-0005).
+- **Exact-integer division and `√`** vs the reference's float division — same sign convention, but
+  precise above 2⁵³ (ADR-0001, "Conformance" notes).
+- **Strict `RuntimeSplError`** for cases the spec leaves undefined: division/modulo by zero,
+  off-stage reference, more than two characters on stage, `√` of a negative, EOF / non-numeric
+  numeric input, and a dangling `If so`/`If not` (ADR-0001, ADR-0003). The one carve-out is
+  character-input EOF → −1.
+- **`more <neutral adjective> than` is rejected** — this *matches* the reference (it admits `more`
+  only with a positive or negative adjective), so it is not a gap (ADR-0004).
+
+## Undocumented supersets (over-acceptances)
+
+These accept strictly more than the reference and are *not* recorded as decisions. Each was
+confirmed live against the analyzer/parser.
+
+- **Noun/adjective polarity is not enforced.** The reference parses a constant as a *negative* noun
+  phrase (adjectives ∈ negative ∪ neutral, noun negative) or a *positive* noun phrase (adjectives ∈
+  positive ∪ neutral, noun positive/neutral); a polarity mismatch is a parse error. The analyzer's
+  `_noun_phrase_value` (`analyzer.py:203-215`) only checks that each pre-noun word *is an adjective*
+  — never its polarity. So `a happy coward` (positive adjective + negative noun) folds to `-2` and
+  `an evil King` (negative adjective + positive noun) folds to `+2`, both **accepted** where the
+  reference rejects them. The computed magnitude (noun sign × 2^adjectives) is otherwise correct.
+  → **issue 25** (match the reference, or record as an intentional superset).
+- **`as <word> as` accepts any vocabulary word** as the equality adjective (`grammar.lark:86`); the
+  reference restricts it to a known adjective. Confirmed: `Are you as cat as a King?` analyzes
+  cleanly even though `cat` is a noun, not an adjective. Minor. → **issue 26**.
+- **Nested conditionals parse.** `conditional` guards a `statement`, and `statement` includes
+  `conditional` (`grammar.lark:53-61,98-99`), so `If so, if not, …` parses; the reference allows
+  exactly one condition prefix per operation. Minor. → **issue 26**.
+
+## Verified complete (explicitly *not* gaps)
+
+To bound the study: the following were checked and match the reference.
+
+- **Comparatives:** bare positives (`better`/`bigger`/`fresher`/`friendlier`/`nicer`/`jollier`),
+  bare negatives (`worse`/`punier`/`smaller`), `more <adj> than` (direction resolved from adjective
+  sign in `analyzer._resolve_comparison`), and `as <adj> as` equality.
+- **I/O:** all four forms — `Open your heart` (number out), `Speak your mind` (char out),
+  `Listen to your heart` (number in), `Open your mind` (char in).
+- **Stacks:** `Remember <value>` / `Recall …`, LIFO, addressing the addressee.
+- **Control flow:** `If so`/`If not`; gotos; Enter / Exit / Exeunt / `[A pause]`.
+- **Vocabulary is reference-exact.** The adjective lists partition cleanly — 36 positive, 32
+  negative, 20 neutral (the remainder), 88 total, pairwise disjoint. Nouns: 13 positive, 25
+  negative, 41 neutral. Neutral nouns are valued **+1**, exactly like the reference's
+  `positive_or_neutral_noun` (`vocabulary.py:44-51`). 152 character names (≈ reference).
+
+## Documentation defects found
+
+- `README.md:69` lists the comparative set as including "with `not` inversion" — **false**;
+  negation was dropped (ADR-0004), and the interpreter has none. → **issue 24**.
+- `grammar.lark:21-23` still frames stacks and square-root/cube as "phase 2"; they are implemented.
+  The phase framing now reads stale (minor; no issue).
+
+## Bottom line
+
+Against the project's stated yardstick (the `shakespearelang` reference), the only missing language
+construct is `the factorial of`. Against the original SPL spec, add negated comparisons — a form the
+reference itself never implemented. Everything else is either complete and reference-exact, a
+deliberate recorded divergence, or a small undocumented over-acceptance now tracked as an issue.
