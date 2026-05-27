@@ -15,7 +15,8 @@
   --ink-muted: #6b6256; /* labels, secondary text       */
   --accent: #7c2f2f; /* oxblood (primary action)     */
   --accent-strong: #5e2222; /* oxblood hover / active       */
-  --rule: #ddd1bc; /* hairline borders / dividers  */
+  --rule: #ddd1bc; /* hairline decorative dividers (e.g. title rule) */
+  --field-border: #9c8a68; /* form-control / button boundaries (>=3:1 vs fill, WCAG 1.4.11) */
   --term-bg: #211d18; /* output panel (deep ink)      */
   --term-fg: #ece4d4; /* output text (parchment)      */
   --err-bg: #2b1a17; /* error panel (oxblood-ink)    */
@@ -102,7 +103,7 @@ body {
 }
 .status[data-status="loading"]::before,
 .status[data-status="running"]::before {
-  background: #c8902f; /* working amber */
+  background: #ab7a1c; /* working amber (>=3:1 vs paper, WCAG 1.4.11) */
 }
 
 /* ---- Controls row ------------------------------------------------------- */
@@ -125,7 +126,7 @@ body {
   font-size: 0.95rem;
   color: var(--ink);
   background: var(--paper-raised);
-  border: 1px solid var(--rule);
+  border: 1px solid var(--field-border);
   border-radius: var(--radius);
   padding: 0.4rem 0.6rem;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -144,7 +145,7 @@ body {
   tab-size: 2;
   color: var(--ink);
   background: var(--paper-raised);
-  border: 1px solid var(--rule);
+  border: 1px solid var(--field-border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   resize: vertical;
@@ -194,7 +195,7 @@ body {
 .btn--secondary {
   background: var(--paper-raised);
   color: var(--ink);
-  border-color: var(--rule);
+  border-color: var(--field-border);
 }
 .btn--secondary:hover:not(:disabled) {
   border-color: var(--accent);
@@ -208,10 +209,16 @@ body {
   flex: 1 1 240px;
   color: var(--ink);
   background: var(--paper-raised);
-  border: 1px solid var(--rule);
+  border: 1px solid var(--field-border);
   border-radius: var(--radius);
   padding: 0.5rem 0.7rem;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* Keep the placeholder legible (Firefox dims it by default). */
+.text-input::placeholder {
+  color: var(--ink-muted);
+  opacity: 1;
 }
 
 /* ---- Section labels ----------------------------------------------------- */

@@ -135,7 +135,7 @@ export default function App() {
     <div className="app">
       <h1>SPL Playground (scaffold)</h1>
 
-      <div id="status" data-status={status} className="status">
+      <div id="status" data-status={status} className="status" role="status">
         {STATUS_LABEL[status]}
       </div>
 
@@ -161,6 +161,7 @@ export default function App() {
       <textarea
         id="source"
         className="editor"
+        aria-label="SPL program source"
         value={source}
         onChange={(e) => handleSourceChange(e.target.value)}
         rows={14}
@@ -179,6 +180,7 @@ export default function App() {
         <input
           id="stdin"
           className="text-input"
+          aria-label="Program input"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           placeholder="program input (include \n yourself)"
@@ -191,13 +193,13 @@ export default function App() {
         </button>
       </div>
 
-      <h3 className="section-label">Output</h3>
-      <pre id="output" className="panel panel--output">
+      <h2 className="section-label">Output</h2>
+      <pre id="output" className="panel panel--output" aria-live="polite">
         {output}
       </pre>
 
-      <h3 className="section-label">Errors</h3>
-      <pre id="error" className="panel panel--error">
+      <h2 className="section-label">Errors</h2>
+      <pre id="error" className="panel panel--error" role="alert">
         {error}
       </pre>
     </div>
