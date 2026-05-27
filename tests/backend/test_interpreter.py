@@ -90,6 +90,31 @@ def test_goto_loop_counts_down() -> None:
     assert run_play(_COUNTDOWN) == "321"
 
 
+_GOTO_ACT = """Return to Act.
+
+Romeo, a person.
+Juliet, a person.
+
+Act I: first.
+Scene I: only.
+[Enter Romeo and Juliet]
+Romeo: You are a flower. Let us return to act II.
+Romeo: You are nothing. Open your heart!
+
+Act II: second.
+Scene I: only.
+Romeo: Open your heart!
+"""
+
+
+def test_goto_act_jumps_to_act_start() -> None:
+    # ADR-0002 (ACT_TARGET_GOTO): we accept act targets as a spec-faithful superset; the oracle
+    # parse-errors on them, so this cannot be a differential fixture. The goto fires before "You are
+    # nothing", so Juliet keeps the flower (1) set just before the jump and Act II prints it. Were
+    # the act goto a no-op, the intervening "You are nothing" would run and the output would be "0".
+    assert run_play(_GOTO_ACT) == "1"
+
+
 def test_cube() -> None:
     # cat=1, doubled by "happy" = 2, cubed = 8
     out = run_scene(
@@ -242,3 +267,30 @@ def test_invalid_character_output_raises() -> None:
 def test_speaker_not_on_stage_raises() -> None:
     with pytest.raises(RuntimeSplError, match="not on stage"):
         run_scene("[Enter Romeo]\nJuliet: Open your heart!")
+
+
+def test_modulo_by_zero_raises() -> None:
+    with pytest.raises(RuntimeSplError, match="modulo by zero"):
+        run_scene(
+            "[Enter Romeo and Juliet]\n"
+            "Romeo: You are the remainder of the quotient between a flower and nothing. "
+            "Open your heart!"
+        )
+
+
+def test_square_root_of_negative_raises() -> None:
+    with pytest.raises(RuntimeSplError, match="square root of a negative"):
+        run_scene(
+            "[Enter Romeo and Juliet]\n"
+            "Romeo: You are the square root of the difference between nothing and a flower. "
+            "Open your heart!"
+        )
+
+
+def test_conditional_without_preceding_question_raises() -> None:
+    # ADR-0001 (DANGLING_CONDITIONAL): with no prior Question the boolean register has no defined
+    # value, so we raise rather than default it false. The oracle defaults false and runs the "If
+    # not" branch, so this is a documented intentional divergence -- and because we raise it cannot
+    # be a golden/differential fixture; it only lives here as a unit test.
+    with pytest.raises(RuntimeSplError, match="conditional without a preceding question"):
+        run_scene("[Enter Romeo and Juliet]\nRomeo: If so, open your heart!")
