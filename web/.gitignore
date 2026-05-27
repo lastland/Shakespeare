@@ -1,0 +1,10 @@
+node_modules/
+dist/
+public/pyodide/
+public/wheels/
+public/coi-serviceworker.js
+e2e/artifacts/
+test-results/
+playwright-report/
+.cache/
+*.tsbuildinfo
