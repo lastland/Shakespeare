@@ -111,4 +111,23 @@ test.describe("SPL playground scaffold", () => {
 
     await page.screenshot({ path: "e2e/artifacts/after-stop-rerun.png", fullPage: true });
   });
+
+  test("5. gallery: load a program from the manifest dropdown and run it", async ({ page }) => {
+    await page.goto("/");
+    await waitForReady(page);
+
+    // The dropdown is populated from public/examples/manifest.json (mirrored from
+    // tests/programs/). It should hold the placeholder + the 8 programs.
+    await expect
+      .poll(async () => page.locator("#example-select option").count(), { timeout: 30_000 })
+      .toBeGreaterThan(1);
+
+    // greeting.spl reads no input and its golden output is "HI": picking it must populate
+    // the editor (source fetched from the manifest) and a Run must print the golden.
+    await page.selectOption("#example-select", "greeting");
+    await expect(page.locator("#source")).not.toHaveValue("");
+    await page.locator("#run").click();
+    await expect(page.locator("#output")).toContainText("HI", { timeout: 60_000 });
+    await expect(page.locator("#error")).toHaveText("");
+  });
 });

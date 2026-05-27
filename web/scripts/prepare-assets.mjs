@@ -21,6 +21,7 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
+  readdirSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -138,6 +139,28 @@ for (const [fileName, sha256] of needed) {
 const coiSrc = require.resolve("coi-serviceworker");
 cpSync(coiSrc, join(publicDir, "coi-serviceworker.js"));
 log(`copied coi-serviceworker.js -> public/`);
+
+// 6. Mirror tests/programs/ into public/examples/ + a manifest so the UI can load any
+// program. A program reads input iff it ships a .in (see tests/test_programs.py), so we
+// pair each .spl with its optional .in and record the flag. Auto-discovered via *.spl, so
+// dropping a new program into tests/programs/ makes it appear in the UI with no code change.
+const programsDir = join(repoRoot, "tests", "programs");
+const examplesDir = join(publicDir, "examples");
+rmSync(examplesDir, { recursive: true, force: true });
+mkdirSync(examplesDir, { recursive: true });
+const manifest = readdirSync(programsDir)
+  .filter((f) => f.endsWith(".spl"))
+  .map((f) => f.slice(0, -".spl".length))
+  .sort()
+  .map((name) => {
+    cpSync(join(programsDir, `${name}.spl`), join(examplesDir, `${name}.spl`));
+    const inName = `${name}.in`;
+    const hasIn = existsSync(join(programsDir, inName));
+    if (hasIn) cpSync(join(programsDir, inName), join(examplesDir, inName));
+    return { name, spl: `${name}.spl`, in: hasIn ? inName : null, readsInput: hasIn };
+  });
+writeFileSync(join(examplesDir, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
+log(`mirrored ${manifest.length} programs -> public/examples/ (+ manifest.json)`);
 
 // Sanity check: confirm the spl wheel bundles grammar + data files.
 const splBytes = readFileSync(join(wheelsDir, SPL_WHEEL));

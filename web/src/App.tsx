@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SplRunner, type RunnerStatus } from "./runner";
+import { loadExample, loadManifest, type ExampleMeta } from "./examples";
 import helloWorld from "./hello_world.spl.txt?raw";
 import echoProgram from "./echo.spl.txt?raw";
 import reverseProgram from "./reverse.spl.txt?raw";
@@ -30,7 +31,12 @@ export default function App() {
   const [error, setError] = useState("");
   const [status, setStatus] = useState<RunnerStatus>("loading");
   const [inputValue, setInputValue] = useState("");
+  const [examples, setExamples] = useState<ExampleMeta[]>([]);
+  const [selectedName, setSelectedName] = useState("hello_world");
   const runnerRef = useRef<SplRunner | null>(null);
+  // Canned input of the currently-loaded example (its .in), fed to run() when the user
+  // clicks Run. Cleared on manual source edits so it never applies to hand-written code.
+  const cannedInputRef = useRef<string[]>([]);
 
   useEffect(() => {
     const runner = new SplRunner({
@@ -44,15 +50,48 @@ export default function App() {
     // its worker internally.
   }, []);
 
+  // Populate the gallery dropdown from the manifest mirrored from tests/programs/.
+  useEffect(() => {
+    loadManifest()
+      .then(setExamples)
+      .catch((e) => setError(`failed to load examples: ${e.message}`));
+  }, []);
+
   const handleRun = useCallback(
     (overrideSource?: string, cannedInput?: string[]) => {
       setOutput("");
       setError("");
       const src = overrideSource ?? source;
-      runnerRef.current?.run(src, cannedInput);
+      runnerRef.current?.run(src, cannedInput ?? cannedInputRef.current);
     },
     [source],
   );
+
+  // Load the selected program's source + its .in (as canned input) without running.
+  const handleSelectExample = useCallback(
+    (name: string) => {
+      setSelectedName(name);
+      if (name === "") return;
+      const meta = examples.find((ex) => ex.name === name);
+      if (!meta) return;
+      setError("");
+      loadExample(meta)
+        .then(({ source: src, cannedInput }) => {
+          setSource(src);
+          cannedInputRef.current = cannedInput;
+        })
+        .catch((e) => setError(`failed to load ${name}: ${e.message}`));
+    },
+    [examples],
+  );
+
+  // A manual edit makes the buffer no-longer-an-example: drop its canned input and the
+  // dropdown selection so a later Run won't feed stale stdin.
+  const handleSourceChange = useCallback((value: string) => {
+    setSource(value);
+    cannedInputRef.current = [];
+    setSelectedName("");
+  }, []);
 
   const handleStop = useCallback(() => {
     runnerRef.current?.stop();
@@ -75,17 +114,19 @@ export default function App() {
     (window as any).__spl = {
       getStatus: () => status,
       examples: { helloWorld, echoProgram, reverseProgram, infiniteLoop: INFINITE_LOOP },
+      // Plumbing tests drive input via Send/SendEof, never canned input -> pass [] so any
+      // dropdown selection state cannot leak into the SAB-handshake assertions.
       runEcho: () => {
         setSource(echoProgram);
-        handleRun(echoProgram);
+        handleRun(echoProgram, []);
       },
       runReverse: () => {
         setSource(reverseProgram);
-        handleRun(reverseProgram);
+        handleRun(reverseProgram, []);
       },
       runInfinite: () => {
         setSource(INFINITE_LOOP);
-        handleRun(INFINITE_LOOP);
+        handleRun(INFINITE_LOOP, []);
       },
     };
   }, [status, handleRun]);
@@ -98,10 +139,29 @@ export default function App() {
         {STATUS_LABEL[status]}
       </div>
 
+      <div style={{ margin: "0.5rem 0", display: "flex", gap: "0.5rem", alignItems: "center" }}>
+        <label htmlFor="example-select">Load a program from tests/programs/:</label>
+        <select
+          id="example-select"
+          value={selectedName}
+          onChange={(e) => handleSelectExample(e.target.value)}
+          disabled={status === "loading" || examples.length === 0}
+          style={{ fontFamily: "monospace" }}
+        >
+          <option value="">— choose —</option>
+          {examples.map((ex) => (
+            <option key={ex.name} value={ex.name}>
+              {ex.name}
+              {ex.readsInput ? " (reads input)" : ""}
+            </option>
+          ))}
+        </select>
+      </div>
+
       <textarea
         id="source"
         value={source}
-        onChange={(e) => setSource(e.target.value)}
+        onChange={(e) => handleSourceChange(e.target.value)}
         rows={14}
         style={{ width: "100%", fontFamily: "monospace" }}
       />
@@ -112,9 +172,6 @@ export default function App() {
         </button>
         <button id="stop" onClick={handleStop}>
           Stop
-        </button>
-        <button id="load-echo" onClick={() => setSource(echoProgram)}>
-          Load echo example
         </button>
       </div>
 
