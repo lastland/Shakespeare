@@ -316,6 +316,29 @@ def test_factorial_of_negative_raises() -> None:
         )
 
 
+def test_factorial_of_too_large_operand_raises() -> None:
+    # An operand above sys.maxsize makes math.factorial raise a raw OverflowError; we wrap it as a
+    # RuntimeSplError so it stays within the SplError contract instead of crashing the interpreter
+    # (ADR-0001). "a big cat" = 2; squaring it six times is 2**64 > sys.maxsize, reachable from
+    # ordinary arithmetic.
+    with pytest.raises(RuntimeSplError, match="factorial operand too large"):
+        run_scene(
+            "[Enter Romeo and Juliet]\n"
+            "Romeo: You are the factorial of the square of the square of the square of the square "
+            "of the square of the square of a big cat. Open your heart!"
+        )
+
+
+def test_nested_conditional_consults_the_single_flag() -> None:
+    # ADR-0007 (issue 26): nested `If so/If not` prefixes both consult the SAME last_question flag
+    # (the parser test pins only that nesting parses; this pins its evaluation). After a TRUE
+    # question, `If so, if so, ...` fires (both checks pass against True) while `If so, if not, ...`
+    # does not (the inner check tests the same True flag against False). Juliet := 65 via input.
+    setup = "[Enter Romeo and Juliet]\nRomeo: Listen to your heart. Are you better than nothing?"
+    assert run_scene(f"{setup} If so, if so, speak your mind!", stdin="65") == "A"
+    assert run_scene(f"{setup} If so, if not, speak your mind!", stdin="65") == ""
+
+
 def test_conditional_without_preceding_question_raises() -> None:
     # ADR-0001 (DANGLING_CONDITIONAL): with no prior Question the boolean register has no defined
     # value, so we raise rather than default it false. The oracle defaults false and runs the "If

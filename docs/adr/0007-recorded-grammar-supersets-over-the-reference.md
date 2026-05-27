@@ -110,7 +110,7 @@ it cannot silently regress.
 - All three grammar supersets — noun/adjective polarity (issue 25), `as <word> as` admitting any
   vocabulary word, and nested conditionals (both issue 26) — are now recorded, decided divergences
   rather than undocumented over-acceptances; `docs/gap-analysis.md` lists each under deliberate
-  divergences, cross-referencing this ADR, and its "Undocumented supersets" section is now empty.
+  divergences, cross-referencing this ADR; no over-acceptance remains undocumented.
 - No analyzer, transformer, grammar, or interpreter behavior changed for any section: the
   interpreter folds mismatched noun phrases exactly as before, the simile adjective is discarded at
   transform time exactly as before, and nested conditionals evaluate by the same single-flag guard

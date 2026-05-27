@@ -92,6 +92,12 @@ This interpreter is cross-checked against the de-facto reference,
   title or Act/Scene/persona label may end with `?` as well as `!`/`.`. The reference admits only
   `!`/`.` for labels (it reads past a `?` as label text), so this is a friendly superset. (Unrelated
   to `?` ending a *question*, which is reference-standard.)
+- **Recorded grammar supersets** ([ADR-0006](docs/adr/0006-conformance-baseline-and-spec-divergences.md)
+  indexes the conformance baseline; [ADR-0007](docs/adr/0007-recorded-grammar-supersets-over-the-reference.md)
+  details them): we intentionally accept three constructs the reference parse-errors on — a constant
+  whose adjective polarity disagrees with its noun (`a happy coward`), `as <word> as` with a
+  non-adjective, and nested `If so`/`If not` conditionals — because each carries the same value or
+  semantics the reference would give, so tightening buys only parse-time strictness.
 
 This interpreter now implements every construct the reference defines, including `the factorial of`
 (issue 23); no sample program uses it.

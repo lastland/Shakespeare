@@ -178,7 +178,17 @@ class Interpreter:
             case "factorial":
                 if operand < 0:
                     raise RuntimeSplError("factorial of a negative number")
-                return math.factorial(operand)
+                # `math.factorial` raises a raw `OverflowError` once the operand
+                # exceeds `sys.maxsize` (and `MemoryError` for one merely huge) —
+                # neither is a `SplError`, so either would escape the error contract
+                # and crash with a bare traceback. Wrap both as `RuntimeSplError`, a
+                # clean spec-undefined error like the negative case (ADR-0001). Unlike
+                # `isqrt` (total over non-negatives), `factorial` has this upper-bound
+                # failure mode.
+                try:
+                    return math.factorial(operand)
+                except (OverflowError, MemoryError) as exc:
+                    raise RuntimeSplError("factorial operand too large") from exc
             case _:  # pragma: no cover
                 raise AssertionError(f"unknown unary operator {op!r}")
 
