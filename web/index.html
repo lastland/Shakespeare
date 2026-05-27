@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SPL Playground (scaffold)</title>
+    <!--
+      coi-serviceworker injects COOP/COEP response headers for static hosts (e.g. GitHub
+      Pages) that cannot set them server-side, giving us crossOriginIsolated there too.
+      In dev/preview the Vite server headers do this instead; the SW is harmless then.
+    -->
+    <script src="./coi-serviceworker.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./src/main.tsx"></script>
+  </body>
+</html>
