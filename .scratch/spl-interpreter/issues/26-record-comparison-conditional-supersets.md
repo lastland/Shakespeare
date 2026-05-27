@@ -1,6 +1,6 @@
 # Record the `as <word> as` and nested-conditional over-acceptances as intentional supersets
 
-Status: ready-for-agent
+Status: resolved
 
 ## What to build
 

@@ -133,6 +133,7 @@ expression.2: THE SUM OF value AND value                              -> sum
             | THE SQUARE OF value                                     -> square
             | THE SQUARE ROOT OF value                                -> square_root
             | THE CUBE OF value                                       -> cube
+            | THE FACTORIAL OF value                                  -> factorial
 
 // A constant is a noun phrase: an optional determiner, then words. Words may be capitalized
 // (`NAME`) — a capitalized noun like `Lord`, or a character name used as a value like `Romeo`.
@@ -222,6 +223,7 @@ TWICE: /twice(?![a-z])/i
 SQUARE: /square(?![a-z])/i
 CUBE: /cube(?![a-z])/i
 ROOT: /root(?![a-z])/i
+FACTORIAL: /factorial(?![a-z])/i
 AND: /and(?![a-z])/i
 
 // --- comparison ---

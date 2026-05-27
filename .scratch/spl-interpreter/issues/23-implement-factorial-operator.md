@@ -1,6 +1,6 @@
 # Implement the `the factorial of` unary operator
 
-Status: ready-for-agent
+Status: resolved
 
 ## What to build
 

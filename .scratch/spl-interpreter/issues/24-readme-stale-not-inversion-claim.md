@@ -1,6 +1,6 @@
 # Fix README's false "`not` inversion" comparative claim
 
-Status: ready-for-agent
+Status: resolved
 
 ## What to build
 

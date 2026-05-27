@@ -64,9 +64,10 @@ src/spl/
 Dramatis Personae declarations; `Enter`/`Exit`/`Exeunt` and the `[A pause]` breakpoint;
 assignment (with the optional `be`/`as ADJ as` flavour); Constants (`article? adjective* noun`,
 incl. multi-word and capitalized nouns); Character references; the arithmetic operators
-(`sum`/`difference`/`product`/`quotient`/`remainder`, `twice`, `square`, `cube`, `square root`);
+(`sum`/`difference`/`product`/`quotient`/`remainder`, `twice`, `square`, `cube`, `square root`,
+`factorial`);
 all four I/O forms; **stacks** (`Remember`/`Recall`); the full comparative set
-(`better`/`bigger`/`worse`/`punier`/… , `more ADJ than`, `as ADJ as`, with `not` inversion) plus
+(`better`/`bigger`/`worse`/`punier`/… , `more ADJ than`, `as ADJ as`) plus
 `If so`/`If not`; and `goto` to an **act or scene**.
 
 ### Conformance & intentional divergences
@@ -92,8 +93,8 @@ This interpreter is cross-checked against the de-facto reference,
   `!`/`.` for labels (it reads past a `?` as label text), so this is a friendly superset. (Unrelated
   to `?` ending a *question*, which is reference-standard.)
 
-**Known gaps:** the `factorial` operator (`the factorial of`) is not implemented (the reference has
-it; no sample program uses it).
+This interpreter now implements every construct the reference defines, including `the factorial of`
+(issue 23); no sample program uses it.
 
 ## Development
 

@@ -2,9 +2,9 @@
 
 How far is this interpreter from a *full* implementation of the Shakespeare Programming Language?
 This document records the gap, with evidence. The short answer: against the de-facto reference, the
-interpreter is complete but for **one** construct (`the factorial of`); every other difference is a
-deliberate, recorded divergence (mostly a superset) — plus a few undocumented over-acceptances and
-one stale doc claim.
+interpreter now implements **every** construct (the last one, `the factorial of`, landed in issue
+23); every remaining difference is a deliberate, recorded divergence (mostly a superset) — plus one
+stale doc claim. No over-acceptance remains undocumented.
 
 ## Baselines & method
 
@@ -26,7 +26,7 @@ Every empirical claim below was probed against the live parser/analyzer.
 | Area | Reference (full) | This interpreter | Verdict |
 | --- | --- | --- | --- |
 | Binary arithmetic (sum/difference/product/quotient/remainder) | 5 | 5 | ✅ complete |
-| Unary arithmetic (twice/square/cube/square-root/**factorial**) | 5 | 4 | ❌ **factorial missing** |
+| Unary arithmetic (twice/square/cube/square-root/factorial) | 5 | 5 | ✅ complete (factorial: issue 23) |
 | Comparatives (bare ±, `more ADJ than`, `as ADJ as`) | all | all | ✅ complete |
 | Negated comparisons (`not better than`) | original-spec only | none | ➖ gap vs *original*, matches reference |
 | I/O (4 forms) | 4 | 4 | ✅ complete |
@@ -37,18 +37,16 @@ Every empirical claim below was probed against the live parser/analyzer.
 
 Legend: ✅ complete · ❌ genuine gap · ➖ gap only vs the original spec · ⚙️ deliberate divergence.
 
-## G1 — `the factorial of` (the one genuine gap)
+## G1 — `the factorial of` (closed by issue 23)
 
-The reference `unary_operation` admits `the cube of`, **`the factorial of`**, `the square of`,
-`the square root of`, and `twice`. The grammar's `expression` rule has the other four but no
-factorial (`grammar.lark:127-135`); there is no `FACTORIAL` terminal, and neither analyzer nor
-interpreter knows the op. `README.md` already lists it under "Known gaps".
+The reference `unary_operation` admits `the cube of`, `the factorial of`, `the square of`,
+`the square root of`, and `twice`. This interpreter now implements all five. The `expression` rule
+carries the `THE FACTORIAL OF value -> factorial` alternative with a word-boundaried `FACTORIAL`
+terminal (`grammar.lark`, following ADR-0002); the transformer maps it to `UnaryOp(op='factorial',
+…)`, and the interpreter's `_unary` computes it over exact integers (`0! = 1`, `n! = n·(n-1)!`).
 
-Confirmed live: a program using `the factorial of a King` raises a `ParseError`, while the parallel
-`the square of a King` parses to `UnaryOp(op='square', …)`.
-
-Reference semantics, for whoever closes this (tracked by **issue 23**): `0! = 1`,
-`n! = n·(n-1)!` for `n ≥ 0`. A negative operand is spec-undefined and should raise per ADR-0001.
+Reference semantics: `0! = 1`, `n! = n·(n-1)!` for `n ≥ 0`. A negative operand is spec-undefined,
+so it raises a `RuntimeSplError` (strict posture of ADR-0001, mirroring the negative-`√` guard).
 
 ## G2 — Negated comparisons (gap vs the *original* spec only)
 
@@ -75,26 +73,30 @@ reference; the runtime ones make it *stricter*.
   character-input EOF → −1.
 - **`more <neutral adjective> than` is rejected** — this *matches* the reference (it admits `more`
   only with a positive or negative adjective), so it is not a gap (ADR-0004).
-
-## Undocumented supersets (over-acceptances)
-
-These accept strictly more than the reference and are *not* recorded as decisions. Each was
-confirmed live against the analyzer/parser.
-
-- **Noun/adjective polarity is not enforced.** The reference parses a constant as a *negative* noun
-  phrase (adjectives ∈ negative ∪ neutral, noun negative) or a *positive* noun phrase (adjectives ∈
-  positive ∪ neutral, noun positive/neutral); a polarity mismatch is a parse error. The analyzer's
-  `_noun_phrase_value` (`analyzer.py:203-215`) only checks that each pre-noun word *is an adjective*
-  — never its polarity. So `a happy coward` (positive adjective + negative noun) folds to `-2` and
-  `an evil King` (negative adjective + positive noun) folds to `+2`, both **accepted** where the
-  reference rejects them. The computed magnitude (noun sign × 2^adjectives) is otherwise correct.
-  → **issue 25** (match the reference, or record as an intentional superset).
-- **`as <word> as` accepts any vocabulary word** as the equality adjective (`grammar.lark:86`); the
-  reference restricts it to a known adjective. Confirmed: `Are you as cat as a King?` analyzes
-  cleanly even though `cat` is a noun, not an adjective. Minor. → **issue 26**.
-- **Nested conditionals parse.** `conditional` guards a `statement`, and `statement` includes
-  `conditional` (`grammar.lark:53-61,98-99`), so `If so, if not, …` parses; the reference allows
-  exactly one condition prefix per operation. Minor. → **issue 26**.
+- **Noun/adjective polarity is not enforced** (ADR-0007; was the subject of issue 25). The reference
+  parses a constant as a *negative* noun phrase (adjectives ∈ negative ∪ neutral, noun negative) or a
+  *positive* noun phrase (adjectives ∈ positive ∪ neutral, noun positive/neutral); a polarity
+  mismatch is a parse error. The analyzer's `_noun_phrase_value` (`analyzer.py:203-215`) checks only
+  that each pre-noun word *is an adjective* — never its polarity. So `a happy coward` (positive
+  adjective + negative noun) folds to `-2` and `an evil King` (negative adjective + positive noun)
+  folds to `+2`, both **accepted** where the reference rejects them. Safe because adjective polarity
+  carries no value information — any adjective just doubles the magnitude — so the computed value
+  (noun sign × 2^adjectives) is always correct; only the reference's parse-time agreement check is
+  unenforced. Kept as an intentional superset and recorded in ADR-0007.
+- **`as <word> as` admits any vocabulary word** as the equality ("simile") adjective (ADR-0007;
+  issue 26). The reference restricts the middle word to a known adjective; `comp_kind`'s
+  `AS WORD AS -> eq` alternative (`grammar.lark:86`) takes any generic `WORD`, and the transformer's
+  `eq` handler discards it, returning the bare `"eq"`. So `Are you as cat as a King?` parses to an
+  `eq` question and analyzes cleanly even though `cat` is a noun. Safe because the simile adjective
+  is semantically inert — the form means equality regardless of the word (unlike `more <adj> than`,
+  whose sign must be kept) — so every program the reference accepts here folds to the identical
+  `eq`. Kept as an intentional superset and recorded in ADR-0007.
+- **Nested conditionals parse** (ADR-0007; issue 26). `conditional` guards a `statement`, and
+  `statement` includes `conditional` (`grammar.lark:53-61,98-99`), so `If so, if not, …` parses to a
+  nested `Conditional`; the reference allows exactly one condition prefix per operation. Safe because
+  the interpreter reuses the singly-guarded rule — each `Conditional` consults the single
+  `last_question` flag (`interpreter.py:110-114`) — so a nested prefix needs no new evaluation rule.
+  Kept as an intentional superset and recorded in ADR-0007.
 
 ## Verified complete (explicitly *not* gaps)
 
@@ -114,14 +116,17 @@ To bound the study: the following were checked and match the reference.
 
 ## Documentation defects found
 
-- `README.md:69` lists the comparative set as including "with `not` inversion" — **false**;
-  negation was dropped (ADR-0004), and the interpreter has none. → **issue 24**.
+- ~~`README.md:69` lists the comparative set as including "with `not` inversion" — **false**;
+  negation was dropped (ADR-0004), and the interpreter has none.~~ → Fixed (issue 24): the
+  false clause was removed from the README.
 - `grammar.lark:21-23` still frames stacks and square-root/cube as "phase 2"; they are implemented.
   The phase framing now reads stale (minor; no issue).
 
 ## Bottom line
 
-Against the project's stated yardstick (the `shakespearelang` reference), the only missing language
-construct is `the factorial of`. Against the original SPL spec, add negated comparisons — a form the
-reference itself never implemented. Everything else is either complete and reference-exact, a
-deliberate recorded divergence, or a small undocumented over-acceptance now tracked as an issue.
+Against the project's stated yardstick (the `shakespearelang` reference), there is no longer any
+missing language construct: `the factorial of` was the last one, closed by issue 23. Against the
+original SPL spec, the only remaining gap is negated comparisons — a form the reference itself never
+implemented. Everything else is either complete and reference-exact or a deliberate recorded
+divergence; no over-acceptance remains undocumented (the last two — `as <word> as` and nested
+conditionals — were recorded in ADR-0007 by issue 26).

@@ -175,6 +175,10 @@ class Interpreter:
                 if operand < 0:
                     raise RuntimeSplError("square root of a negative number")
                 return math.isqrt(operand)
+            case "factorial":
+                if operand < 0:
+                    raise RuntimeSplError("factorial of a negative number")
+                return math.factorial(operand)
             case _:  # pragma: no cover
                 raise AssertionError(f"unknown unary operator {op!r}")
 

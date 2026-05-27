@@ -127,6 +127,22 @@ def test_thine_possessive_determiner_is_ignored() -> None:
     assert _first_statement(program) == Assignment(Number(-1))
 
 
+def test_polarity_mismatch_positive_adjective_negative_noun_is_accepted() -> None:
+    # ADR-0007 (issue 25): the reference parse-errors on a polarity mismatch (positive adjective on
+    # a negative noun), but our analyzer never checks adjective polarity — it accepts the phrase and
+    # folds it. "happy" (positive adjective) + "coward" (negative noun) -> -1 * 2^1 = -2. Pinned so
+    # the intentional superset cannot silently regress.
+    program = _analyze("Romeo: You are a happy coward.")
+    assert _first_statement(program) == Assignment(Number(-2))
+
+
+def test_polarity_mismatch_negative_adjective_positive_noun_is_accepted() -> None:
+    # ADR-0007 (issue 25): the mirror case. "evil" (negative adjective) + "King" (positive noun) is
+    # a polarity mismatch the reference rejects; we accept it and fold to +1 * 2^1 = 2.
+    program = _analyze("Romeo: You are an evil King.")
+    assert _first_statement(program) == Assignment(Number(2))
+
+
 def test_unknown_noun_raises() -> None:
     with pytest.raises(AnalysisError, match="unknown noun"):
         _analyze("Romeo: You are a florp.")
@@ -182,6 +198,16 @@ def test_more_negative_adjective_resolves_to_lt() -> None:
     # "rotten" is a negative adjective -> less-than.
     question = _first_question("Romeo: Am I more rotten than you?")
     assert question.comparison == "lt"
+
+
+def test_simile_with_non_adjective_word_analyzes_to_eq() -> None:
+    # ADR-0007 (issue 26): the reference's `as ADJ as` requires a known adjective and parse-errors
+    # on a noun there; we admit any vocabulary word and discard it (the simile means equality
+    # regardless). "cat" is a NOUN, yet `Are you as cat as a King?` analyzes cleanly to an `eq`
+    # question — the analyzer never classifies the discarded word. Pinned so the superset can't
+    # silently regress.
+    question = _first_question("Romeo: Are you as cat as a King?")
+    assert question.comparison == "eq"
 
 
 def test_more_unknown_adjective_raises() -> None:

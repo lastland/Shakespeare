@@ -124,6 +124,9 @@ class ToAst(Transformer[Token, object]):
     def cube(self, children: list[object]) -> UnaryOp:
         return UnaryOp("cube", _exprs(children)[0])
 
+    def factorial(self, children: list[object]) -> UnaryOp:
+        return UnaryOp("factorial", _exprs(children)[0])
+
     # ---- comparisons ----
 
     def eq(self, children: list[object]) -> str:

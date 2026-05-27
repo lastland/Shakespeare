@@ -1,6 +1,6 @@
 # Record the noun/adjective polarity over-acceptance as an intentional superset
 
-Status: ready-for-agent
+Status: resolved
 
 ## What to build
 

@@ -82,6 +82,13 @@ def test_remainder_phrase() -> None:
     ) == BinaryOp("remainder", Constant(("flower",)), Constant(("pig",)))
 
 
+def test_factorial_parses_to_unary_op() -> None:
+    # `the factorial of <value>` is a unary op alongside square/cube/square-root/twice (issue 23).
+    assert parse("the factorial of a happy cat", start="value") == UnaryOp(
+        "factorial", Constant(("happy", "cat"))
+    )
+
+
 # ---- stage directions ----
 
 
@@ -215,6 +222,24 @@ def test_conditional_guards_a_goto() -> None:
     )
     assert parse("If not, we shall return to act I.", start="sentence") == Conditional(
         False, Goto("act", 1)
+    )
+
+
+def test_simile_admits_a_non_adjective_word() -> None:
+    # ADR-0007 (issue 26): the reference's `as ADJ as` requires a known adjective; we admit any
+    # vocabulary word as the simile adjective and discard it, since the form means equality
+    # regardless of the word. "cat" is a NOUN, yet `as cat as` parses to the equality question.
+    assert parse("Are you as cat as a King?", start="sentence") == Question(
+        PronounValue("second"), Constant(("King",)), "eq"
+    )
+
+
+def test_nested_conditional_parses() -> None:
+    # ADR-0007 (issue 26): the reference attaches at most one condition prefix per operation; we let
+    # a conditional guard another conditional (a `conditional` body may itself be a `conditional`),
+    # so `If so, if not, ...` parses to a nested Conditional. Pinned so the superset cannot regress.
+    assert parse("If so, if not, Thou art a King.", start="sentence") == Conditional(
+        True, Conditional(False, Assignment(Constant(("King",))))
     )
 
 

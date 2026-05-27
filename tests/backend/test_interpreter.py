@@ -132,6 +132,24 @@ def test_square_root() -> None:
     assert out == "2"
 
 
+def test_factorial_of_zero_is_one() -> None:
+    # 0! = 1 (issue 23). "nothing" folds to 0.
+    out = run_scene(
+        "[Enter Romeo and Juliet]\nRomeo: You are the factorial of nothing. Open your heart!"
+    )
+    assert out == "1"
+
+
+def test_factorial_of_five_is_120() -> None:
+    # Build 5 as flower + flower + flower + flower + flower, then 5! = 120 (issue 23).
+    out = run_scene(
+        "[Enter Romeo and Juliet]\n"
+        "Romeo: You are the factorial of the sum of a flower and the sum of a flower and the sum "
+        "of a flower and the sum of a flower and a flower. Open your heart!"
+    )
+    assert out == "120"
+
+
 def test_character_reference_reads_value() -> None:
     # Juliet := flower(1); then Juliet := Juliet(1) + flower(1) = 2, referencing Juliet by name.
     out = run_scene(
@@ -283,6 +301,17 @@ def test_square_root_of_negative_raises() -> None:
         run_scene(
             "[Enter Romeo and Juliet]\n"
             "Romeo: You are the square root of the difference between nothing and a flower. "
+            "Open your heart!"
+        )
+
+
+def test_factorial_of_negative_raises() -> None:
+    # A negative operand is spec-undefined; strict posture raises (ADR-0001), like the negative-√
+    # guard. -1 = nothing - flower (issue 23).
+    with pytest.raises(RuntimeSplError, match="factorial of a negative"):
+        run_scene(
+            "[Enter Romeo and Juliet]\n"
+            "Romeo: You are the factorial of the difference between nothing and a flower. "
             "Open your heart!"
         )
 

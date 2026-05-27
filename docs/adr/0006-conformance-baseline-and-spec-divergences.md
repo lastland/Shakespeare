@@ -20,12 +20,16 @@ extracted from it (`vocabulary.py`). Where we intentionally exceed or tighten th
 so in an ADR. "Original-spec but not in the reference" is therefore *not* a conformance bug for us;
 it is a documented gap (see negated comparisons below).
 
-## The one unimplemented reference construct: `the factorial of`
+## The last unimplemented reference construct: `the factorial of` (now implemented)
 
 The reference `unary_operation` admits `twice`, `square`, `cube`, `square root`, **and
-`factorial`**. We implement the first four; `the factorial of` is absent from the grammar, analyzer,
-and interpreter (a program using it raises a `ParseError`). This is the sole construct the reference
-defines that we do not. It is tracked by issue 23 and is the only ❌ in the gap analysis.
+`factorial`**. `the factorial of` was for a time the sole construct the reference defined that we
+did not — the only ❌ in the gap analysis. It was **implemented by issue 23**: a word-boundaried
+`FACTORIAL` terminal and a `THE FACTORIAL OF value -> factorial` alternative (ADR-0002), folding to
+`UnaryOp(op='factorial', …)`, computed over exact integers in `_unary` (`0! = 1`, `n! = n·(n-1)!`),
+with a negative operand raising `RuntimeSplError` per the strict posture of ADR-0001. With this in
+place, the interpreter implements every construct the reference EBNF defines; the reference gap is
+closed.
 
 ## Negated comparisons: dropped to track the reference
 
@@ -47,16 +51,20 @@ We do not re-litigate these here; this is the index:
 - **ADR-0004** — drop negated questions; reject `more <neutral adjective> than` (the latter *matches*
   the reference).
 - **ADR-0005** — title/section labels may end with `?` (superset).
+- **ADR-0007** — recorded grammar supersets over the reference: **noun/adjective polarity is not
+  enforced** (the magnitude is always correct, only parse-time agreement is unchecked), **`as <word>
+  as` admits any vocabulary word** as the inert simile adjective, and **nested conditionals parse**.
 
 ## Consequences
 
 - The conformance question has a single, citable answer: we target `shakespearelang`'s
-  `shakespeare.ebnf`; the gap to it is exactly `the factorial of` (issue 23). The gap to the
-  *original* spec additionally includes negated comparisons.
-- A few **undocumented** supersets remain (noun/adjective polarity not enforced; `as <word> as`
-  admits non-adjectives; nested conditionals parse). The triage decision is to keep them as
-  intentional supersets and record them: polarity is tracked by issue 25, and the `as <word> as` /
-  nested-conditional pair by issue 26. Once those land, this list moves from "undocumented" to
-  "decided".
+  `shakespeare.ebnf`; with `the factorial of` implemented (issue 23) there is no remaining gap to it.
+  The gap to the *original* spec is now just negated comparisons.
+- All three grammar supersets over the reference are now **decided and recorded** in ADR-0007:
+  noun/adjective polarity is not enforced (issue 25 — we keep it because the folded magnitude is
+  always correct and only the reference's parse-time polarity *agreement* goes unenforced), `as
+  <word> as` admits any vocabulary word as the inert simile adjective, and nested conditionals parse
+  (both issue 26, which extended ADR-0007). The triage decision in each case was to keep the superset
+  and record it; **no undocumented supersets remain**.
 - This ADR is an index, so it stays correct only if new divergence ADRs add themselves to the list
   above.
