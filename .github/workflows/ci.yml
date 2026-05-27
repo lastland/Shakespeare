@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    name: gate (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.13", "3.14"]
+    env:
+      # Drive every `uv` call to the matrix interpreter; uv auto-downloads managed CPython.
+      UV_PYTHON: ${{ matrix.python-version }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v8
+        with:
+          version: "0.11.14"   # match local dev + build floor (uv_build>=0.11.14,<0.12.0)
+          enable-cache: true
+      - name: Sync (locked, reference-free)
+        run: uv sync --locked
+      - name: Ruff (lint)
+        run: uv run ruff check src tests
+      - name: Ruff (format check)
+        run: uv run ruff format --check src tests
+      - name: Pyright (strict)
+        run: uv run pyright
+      - name: Pytest (default suite; reference-free)
+        run: uv run pytest
+
+  differential:
+    name: differential (oracle cross-check, py3.13)
+    runs-on: ubuntu-latest
+    env:
+      UV_PYTHON: "3.13"
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v8
+        with:
+          version: "0.11.14"
+          enable-cache: true
+      - name: Sync (locked)
+        run: uv sync --locked
+      - name: Preflight — fail if the oracle is not actually runnable
+        # Guards against a vacuous pass: tests/test_differential.py turns a missing oracle into a
+        # GREEN skip in two places (module-level `importorskip("shakespearelang")` and per-test
+        # `shutil.which("shakespeare")`). Assert BOTH preconditions hold in the same `--with` env
+        # before pytest, so a silently-skipped cross-check can never masquerade as a pass. This is
+        # count-independent (unlike `grep '8 passed'`): adding programs never breaks it.
+        run: |
+          uv run --with shakespearelang python -c "import shakespearelang, shutil, sys; sys.exit(0 if shutil.which('shakespeare') else 1)"
+      - name: Differential cross-check
+        run: uv run --with shakespearelang pytest -m differential
