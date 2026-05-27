@@ -132,21 +132,21 @@ export default function App() {
   }, [status, handleRun]);
 
   return (
-    <div style={{ fontFamily: "monospace", padding: "1rem", maxWidth: 900 }}>
+    <div className="app">
       <h1>SPL Playground (scaffold)</h1>
 
-      <div id="status" data-status={status} style={{ margin: "0.5rem 0", fontWeight: "bold" }}>
+      <div id="status" data-status={status} className="status">
         {STATUS_LABEL[status]}
       </div>
 
-      <div style={{ margin: "0.5rem 0", display: "flex", gap: "0.5rem", alignItems: "center" }}>
+      <div className="controls">
         <label htmlFor="example-select">Load a program from tests/programs/:</label>
         <select
           id="example-select"
+          className="select"
           value={selectedName}
           onChange={(e) => handleSelectExample(e.target.value)}
           disabled={status === "loading" || examples.length === 0}
-          style={{ fontFamily: "monospace" }}
         >
           <option value="">— choose —</option>
           {examples.map((ex) => (
@@ -160,63 +160,44 @@ export default function App() {
 
       <textarea
         id="source"
+        className="editor"
         value={source}
         onChange={(e) => handleSourceChange(e.target.value)}
         rows={14}
-        style={{ width: "100%", fontFamily: "monospace" }}
       />
 
-      <div style={{ margin: "0.5rem 0", display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-        <button id="run" onClick={() => handleRun()} disabled={status === "loading"}>
+      <div className="actions">
+        <button id="run" className="btn btn--primary" onClick={() => handleRun()} disabled={status === "loading"}>
           Run
         </button>
-        <button id="stop" onClick={handleStop}>
+        <button id="stop" className="btn btn--secondary" onClick={handleStop}>
           Stop
         </button>
       </div>
 
-      <div style={{ margin: "0.5rem 0", display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+      <div className="actions">
         <input
           id="stdin"
+          className="text-input"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           placeholder="program input (include \n yourself)"
-          style={{ fontFamily: "monospace", minWidth: 240 }}
         />
-        <button id="send" onClick={handleSend}>
+        <button id="send" className="btn btn--secondary" onClick={handleSend}>
           Send
         </button>
-        <button id="send-eof" onClick={handleEof}>
+        <button id="send-eof" className="btn btn--secondary" onClick={handleEof}>
           Send EOF (Ctrl-D)
         </button>
       </div>
 
-      <h3>Output</h3>
-      <pre
-        id="output"
-        style={{
-          background: "#111",
-          color: "#0f0",
-          padding: "0.5rem",
-          minHeight: "4rem",
-          whiteSpace: "pre-wrap",
-          overflowX: "auto",
-        }}
-      >
+      <h3 className="section-label">Output</h3>
+      <pre id="output" className="panel panel--output">
         {output}
       </pre>
 
-      <h3>Errors</h3>
-      <pre
-        id="error"
-        style={{
-          background: "#200",
-          color: "#f88",
-          padding: "0.5rem",
-          minHeight: "2rem",
-          whiteSpace: "pre-wrap",
-        }}
-      >
+      <h3 className="section-label">Errors</h3>
+      <pre id="error" className="panel panel--error">
         {error}
       </pre>
     </div>
