@@ -58,3 +58,12 @@ This is surprising (a reader expects the vocabulary to live in the grammar) and 
   Ghost`); a possessive/article only appears in a noun phrase. So a non-`the` determiner (or none)
   now skips the retry and falls through to noun-phrase resolution (here an "unknown noun" error,
   since `ghost` is not a noun), matching the reference.
+- Determiners are reserved out of `WORD` (a negative lookahead listing the determiners alongside
+  `not`), because a determiner like `the` matches BOTH its keyword terminal and the generic `WORD`
+  over the same span — making `constant` (`THE (WORD|NAME)+ | _det_other? (WORD|NAME)+`) genuinely
+  ambiguous for every determiner. It parsed correctly only because Lark's default ambiguity
+  resolution happened to pick the determiner reading (raising terminal priority does NOT fix it);
+  reserving the determiners — none of which is SPL vocabulary — removes the ambiguity at the source.
+  This is also why the cheaper `dynamic` lexer suffices over `dynamic_complete`: word-boundaried
+  keywords mean no keyword can match a prefix of a vocabulary word, so there are no hidden split
+  tokenisations for the exhaustive lexer to discover.

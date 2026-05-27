@@ -14,9 +14,9 @@ Per ADR-0001/ADR-0003 the undefined cases are handled strictly. Character input 
 spl2c's `scanf("%d")` (leading whitespace skip, optional sign, digit run) but *raises*
 `RuntimeSplError` at EOF and on non-numeric input rather than returning a sentinel, and consumes
 one bare `\n` after the digits (a `\r`, like any non-`\n` terminator, is left for the next read --
-matching the reference). On the non-numeric error path it pushes the offending character back
-before raising. Writing a character whose value is not a valid Unicode code point also raises
-rather than coercing it.
+matching the reference). On the non-numeric error path the consumed sign and offending char are
+pushed back before raising, leaving the unparsed numeric token in the stream. Writing a character
+whose value is not a valid Unicode code point also raises rather than coercing it.
 """
 
 from __future__ import annotations
@@ -44,8 +44,8 @@ class IO(Protocol):
         Parses spl2c-style (leading whitespace skip, optional sign, digit run) but raises
         `RuntimeSplError` at EOF and on non-numeric input (ADR-0003), and consumes one bare `\\n`
         after the digits (a `\\r` is left for the next read, matching the reference). On the
-        non-numeric error path the offending character is pushed back before raising, so it stays
-        readable.
+        non-numeric error path the consumed sign and offending character are pushed back before
+        raising, leaving the unparsed numeric token readable.
         """
         ...
 
@@ -70,28 +70,29 @@ def _check_codepoint(value: int) -> str:
 
 
 class _CharReader:
-    """A `TextIO` wrapped with a one-character pushback buffer.
+    """A `TextIO` wrapped with a small (LIFO) pushback buffer.
 
     `read_number` must look one character past the digits to know the number has ended; that
-    terminator has to remain available to the next read. A pushback buffer gives us this without
-    relying on `seek`/`tell`, which a real (terminal) stdin does not support.
+    terminator has to remain available to the next read. On a matching failure it also restores the
+    whole consumed-but-unparsed numeric token (a consumed sign plus the offending char). A pushback
+    buffer gives us this without relying on `seek`/`tell`, which a real (terminal) stdin does not
+    support.
     """
 
     def __init__(self, stream: TextIO) -> None:
         self._stream = stream
-        self._pending: str | None = None
+        self._pending: list[str] = []
 
     def _next(self) -> str:
         """Return the next character, or "" at EOF."""
-        if self._pending is not None:
-            ch = self._pending
-            self._pending = None
-            return ch
+        if self._pending:
+            return self._pending.pop()
         return self._stream.read(1)
 
     def _push_back(self, ch: str) -> None:
-        """Put `ch` (a non-empty single char) back so the next read sees it first."""
-        self._pending = ch
+        """Push `ch` (a non-empty single char) back so a later read returns it. The buffer is a LIFO
+        stack, so to restore several chars in stream order, push the LATER ones first."""
+        self._pending.append(ch)
 
     def read_char(self) -> int:
         ch = self._next()
@@ -109,9 +110,11 @@ class _CharReader:
         -- is pushed back so the next character read returns it.
 
         Raises `RuntimeSplError` when no digit is found -- at EOF before any digit, on a sign not
-        followed by a digit, or on otherwise non-numeric input. The offending (already-consumed)
-        character is pushed back before raising, so a failed read leaves the stream recoverable and
-        faithful to the `scanf("%d")` model (ADR-0003); at EOF there is nothing to push back.
+        followed by a digit, or on otherwise non-numeric input. On a matching failure the consumed
+        sign and the offending character are both pushed back before raising, so the failed read
+        leaves the unparsed numeric token in the stream (the leading-whitespace skip is committed,
+        as scanf's is); at EOF there is nothing to push back. The interpreter halts on this raise,
+        so this restoration is stream hygiene for tests, not behavior any program observes.
         """
         # Skip leading whitespace.
         ch = self._next()
@@ -121,7 +124,9 @@ class _CharReader:
             raise RuntimeSplError("no numeric input: end of file")
 
         sign = 1
+        sign_char = ""
         if ch in "+-":
+            sign_char = ch
             if ch == "-":
                 sign = -1
             ch = self._next()
@@ -132,10 +137,16 @@ class _CharReader:
             ch = self._next()
 
         if not digits:
-            # No digit where a number was expected. Push the offending char back (so it stays in
-            # the stream, matching scanf("%d")) before raising; at EOF there is nothing to restore.
+            # Matching failure: no digit where a number was expected. Restore the full unparsed
+            # numeric token -- the offending char (if any) and a consumed sign (if any) -- so a
+            # failed read leaves the stream as scanf would (the leading-whitespace skip is committed
+            # either way). Push the offending char first; the buffer is LIFO, so the sign comes back
+            # out first, restoring stream order. NB: the interpreter halts on this raise and never
+            # reads the stream afterward; the restoration is for tests, not observed behavior.
             if ch != "":
                 self._push_back(ch)
+            if sign_char:
+                self._push_back(sign_char)
             raise RuntimeSplError("no numeric input")
 
         # Consume exactly one bare "\n" terminator; push any other terminator back for the next

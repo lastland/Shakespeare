@@ -1,4 +1,4 @@
-// Shakespeare Programming Language grammar (lark, Earley + dynamic_complete lexer).
+// Shakespeare Programming Language grammar (lark, Earley + dynamic lexer).
 //
 // Design notes (see ADR-0002):
 //   * All keywords are NAMED, case-insensitive terminals declared in the terminals section
@@ -7,9 +7,14 @@
 //   * A single generic lowercase WORD terminal carries all vocabulary (nouns/adjectives);
 //     classification + value computation happen later in the backend analyzer — WORD enumerates
 //     no keywords.
-//   * Pronouns and `expression` outrank `constant` by RULE PRIORITY so that, under the
-//     dynamic_complete lexer (which explores every tokenisation), `you` resolves to a pronoun and
-//     `the sum of ...` to an operation instead of being swallowed as a long WORD+ constant.
+//   * Pronouns and `expression` outrank `constant` by RULE PRIORITY so that, under the dynamic
+//     lexer, `you` resolves to a pronoun and `the sum of ...` to an operation instead of being
+//     swallowed as a long WORD+ constant. (The cheaper `dynamic` lexer suffices over
+//     `dynamic_complete`: every keyword is word-boundaried, so no keyword can match a prefix of a
+//     vocabulary word and there are no hidden split tokenisations for `dynamic_complete` to find.)
+//   * Determiners and `not` are RESERVED out of WORD (see the WORD terminal) so they lex only as
+//     their keyword terminal — otherwise `the` matches both THE and WORD and `constant` is
+//     ambiguous for every determiner (ADR-0002).
 //   * Free-text comments are a single greedy COMMENT terminal; the dynamic lexer only offers it
 //     in comment positions.
 //
@@ -254,14 +259,21 @@ NAME: /[A-Z][a-z]+(?:[ \t]+(?:of[ \t]+)?[A-Z][a-z]+)*/
 ROMAN: /[IVXLCDM]+/
 // A vocabulary word (noun/adjective) — generic, no keywords baked in (ADR-0002).
 // Allows internal apostrophes/hyphens so words like "summer's" and "half-witted" are one token.
-// `not` is RESERVED out of WORD (leading `(?!not(?![a-z]))`): it is never SPL vocabulary, and with
-// negated questions dropped (issue 13) it has no role in a value/comparison. Without this, the
-// dynamic lexer would offer `not` as a WORD and the greedy `constant` rule would swallow it (e.g.
-// `you not` / `Romeo not`), so `Is X not worse than Y?` would parse to an un-negated question
-// instead of failing — the silent-drop bug. The word-boundary `(?![a-z])` keeps words that merely
-// CONTAIN "not" (`nothing`, `another`, `notch`) lexing normally. `not` still lexes as the NOT
-// keyword for the separate `If not, ...` conditional.
-WORD: /(?!not(?![a-z]))[a-z]+(?:['-][a-z]+)*/
+// Determiners and `not` are RESERVED out of WORD (the leading negative lookahead): none is ever SPL
+// vocabulary, and offering them as WORD breaks two rules. (1) Determiners: `the`/`a`/`my`/... each
+// match BOTH their keyword terminal and the generic WORD over the SAME span, so `constant`
+// (`THE (WORD|NAME)+ | _det_other? (WORD|NAME)+`) is genuinely AMBIGUOUS for every determiner —
+// `the flower` could be `THE WORD("flower")` or `WORD("the") WORD("flower")`. It "worked" only
+// because Lark's default ambiguity resolution happened to pick the determiner reading (bumping
+// terminal priority does NOT fix it); reserving the determiners removes the ambiguity at the source
+// (ADR-0002). (2) `not`: with negated questions dropped (issue 13) it has no role in a
+// value/comparison, and offering it as WORD let the greedy `constant` swallow it (`you not` /
+// `Romeo not`), so `Is X not worse than Y?` parsed to an un-negated question instead of failing —
+// the silent-drop bug. The word-boundary `(?![a-z])` on each reserved word keeps words that merely
+// CONTAIN one (`nothing`, `another`, `angel`, `theirs`) lexing normally. Each reserved word still
+// lexes as its own keyword terminal where the grammar uses it (`NOT` for `If not, ...`; `THE`/`A`/…
+// as determiners/articles).
+WORD: /(?!(?:thine|their|mine|your|not|the|his|her|its|thy|an|my|a)(?![a-z]))[a-z]+(?:['-][a-z]+)*/
 // Free text for the title, persona descriptions, and act/scene titles. Runs until the next
 // sentence terminator REGARDLESS of line breaks (issue 01): SPL comments — including persona
 // descriptions and act/scene titles — may wrap across lines, so newlines are NOT excluded. A

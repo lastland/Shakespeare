@@ -21,11 +21,15 @@ _START_SYMBOLS = ["play", "value", "line", "name", "sentence"]
 
 @cache
 def _parser() -> Lark:
-    # The dynamic lexer is contextual (maximal-munch, no character splitting): at each point it
-    # offers only the terminals the grammar allows there. Because arithmetic lives in its own
-    # `expression` rule, the state after `the` offers both the arithmetic keywords and WORD, and
-    # keyword terminals outrank the generic WORD regex — so `the sum of ...` tokenises as the
-    # operation while `a flower` stays a constant. WORD therefore needs no keyword enumeration.
+    # The dynamic lexer is contextual (maximal-munch): at each point it offers only the terminals
+    # the grammar allows there. Two things keep a generic WORD from mis-tokenising:
+    #   * Determiners (and `not`) are RESERVED out of WORD (see the WORD terminal in the grammar),
+    #     so `the`/`a`/... lex ONLY as their keyword terminal. Without this `the` matches both THE
+    #     and WORD on the same span and `constant` is ambiguous for every determiner (ADR-0002).
+    #   * Other keywords (SUM, OF, ...) DO coexist with WORD on the same span, but `expression` and
+    #     the pronouns outrank `constant` by RULE PRIORITY, so `the sum of ...` resolves to the
+    #     operation while `a flower` stays a constant.
+    # WORD therefore enumerates no vocabulary.
     return Lark(
         _GRAMMAR,
         parser="earley",

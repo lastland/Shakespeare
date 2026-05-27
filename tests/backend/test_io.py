@@ -165,14 +165,25 @@ def test_buffer_read_number_no_newline_leaves_terminator() -> None:
     assert io_.read_char() == ord("X")
 
 
-def test_buffer_read_number_error_preserves_offending_char() -> None:
-    # On the non-numeric error path the consumed char is pushed back, so it stays readable and the
-    # stream is faithful to the scanf("%d") model (ADR-0003).
+def test_buffer_read_number_error_restores_sign_and_offending_char() -> None:
+    # On a matching failure the consumed sign AND the offending char are both restored, in stream
+    # order, so the failed read is non-destructive (ADR-0003). For "-x5" the "-" comes back first.
     io_ = BufferIO("-x5")
     with pytest.raises(RuntimeSplError):
         io_.read_number()
+    assert io_.read_char() == ord("-")
     assert io_.read_char() == ord("x")
     assert io_.read_char() == ord("5")
+
+
+def test_buffer_read_number_lone_sign_at_eof_restored() -> None:
+    # A sign with no following digit (here at EOF) is a matching failure; the consumed sign is
+    # restored so the next read sees it again, then EOF.
+    io_ = BufferIO("-")
+    with pytest.raises(RuntimeSplError):
+        io_.read_number()
+    assert io_.read_char() == ord("-")
+    assert io_.read_char() == -1
 
 
 def test_buffer_read_number_non_numeric_char_recoverable() -> None:
@@ -245,8 +256,9 @@ def test_stdio_read_number_leaves_carriage_return() -> None:
     assert stdio.read_char() == 13
 
 
-def test_stdio_read_number_error_preserves_offending_char() -> None:
+def test_stdio_read_number_error_restores_sign_and_offending_char() -> None:
     stdio = StdIO(input=io.StringIO("-x5"))
     with pytest.raises(RuntimeSplError):
         stdio.read_number()
+    assert stdio.read_char() == ord("-")
     assert stdio.read_char() == ord("x")

@@ -46,3 +46,9 @@ for numeric input.
   input that `shakespearelang` would reject — a spec-faithful superset, not cross-checkable against
   the oracle for those inputs. The raise-on-EOF / raise-on-non-numeric behaviour *does* match the
   oracle.
+- On a non-numeric matching failure, `read_number` restores the full unparsed numeric token (the
+  consumed sign and the offending character), not just the offending character, so a failed read is
+  non-destructive. The exact pushback of a lone-sign failure is implementation-defined in C, and the
+  oracle (`shakespearelang`, in Python) raises rather than recovering, so this is a
+  stream-hygiene/test contract: the interpreter halts on the raise and never observes post-error
+  stream state.
