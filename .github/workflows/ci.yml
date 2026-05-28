@@ -78,3 +78,88 @@ jobs:
       - name: Differential cross-check
         run: uv run --with shakespearelang pytest -m differential
 
+  web-gate:
+    # Fast feedback for the web playground (src/web; see ADR-0010): lint, format-check,
+    # typecheck, unit tests + coverage. Runs in parallel with `gate` / `differential`;
+    # does NOT need uv or Pyodide assets — vitest fakes the worker (runner.test.ts) and
+    # stubs fetch (examples.test.ts). The heavier Playwright run lives in `web-e2e`.
+    name: web-gate (lint + typecheck + unit)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/web
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: src/web/package-lock.json
+      - name: Install web deps (locked)
+        run: npm ci
+      - name: ESLint
+        run: npm run lint
+      - name: Prettier (format check)
+        run: npm run format:check
+      - name: TypeScript (tsc -b)
+        run: npm run typecheck
+      - name: Vitest (unit + coverage)
+        run: npm run test:coverage
+      - name: Upload web coverage to Codecov
+        # Separate flag from the Python 'spl' upload so the two stay decoupled.
+        # Report-only (no gate), mirroring the Python side; a Codecov outage never fails CI.
+        uses: codecov/codecov-action@v6.0.1
+        with:
+          files: ./src/web/coverage/lcov.info
+          flags: web
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  web-e2e:
+    # Playwright integration gate: builds the dist (the prebuild hook vendors the spl wheel
+    # + Pyodide + lark via prepare-assets), runs `vite preview` under COOP/COEP, and drives
+    # the playground in headless chromium. Heavy (~3-5 min), runs in parallel with web-gate.
+    name: web-e2e (playwright)
+    runs-on: ubuntu-latest
+    env:
+      UV_PYTHON: "3.13"
+    defaults:
+      run:
+        working-directory: src/web
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v8.1.0   # prebuild runs `uv build --wheel` for the spl wheel
+        with:
+          version: "0.11.14"
+          enable-cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: src/web/package-lock.json
+      - name: Install web deps (locked)
+        run: npm ci
+      - name: Resolve installed Playwright version
+        id: pw
+        # Cache the browser binaries keyed on the exact installed playwright version so
+        # the ~150MB chromium download is skipped on re-runs at the same version.
+        run: echo "version=$(node -p "require('playwright/package.json').version")" >> "$GITHUB_OUTPUT"
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
+      - name: Install Playwright chromium (skipped if cached)
+        run: npx playwright install --with-deps chromium
+      - name: Playwright e2e (build + preview + tests)
+        run: npm run e2e
+      - name: Upload Playwright artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts
+          path: |
+            src/web/test-results
+            src/web/e2e/artifacts
+          if-no-files-found: ignore
+          retention-days: 7
