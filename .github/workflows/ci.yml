@@ -32,9 +32,10 @@ jobs:
       - name: Sync (locked, reference-free)
         run: uv sync --locked
       - name: Ruff (lint)
-        run: uv run ruff check src tests
+        # src/ is polyglot post-ADR-0010 (src/spl + src/web); only lint the Python package.
+        run: uv run ruff check src/spl tests
       - name: Ruff (format check)
-        run: uv run ruff format --check src tests
+        run: uv run ruff format --check src/spl tests
       - name: Pyright (strict)
         run: uv run pyright
       - name: Pytest (default suite; reference-free) + coverage
@@ -76,3 +77,4 @@ jobs:
           uv run --with shakespearelang python -c "import shakespearelang, shutil, sys; sys.exit(0 if shutil.which('shakespeare') else 1)"
       - name: Differential cross-check
         run: uv run --with shakespearelang pytest -m differential
+

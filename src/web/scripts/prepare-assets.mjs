@@ -31,7 +31,10 @@ import { fileURLToPath } from "node:url";
 const require = createRequire(import.meta.url);
 const here = dirname(fileURLToPath(import.meta.url));
 const webRoot = resolve(here, "..");
-const repoRoot = resolve(webRoot, "..");
+// Post-ADR-0010 the web project lives at src/web/, so the repo root is two levels above
+// the web project, not one. uv build (run from repoRoot), the spl wheel under repoRoot/dist,
+// and the tests/programs/ mirror source all anchor here.
+const repoRoot = resolve(webRoot, "..", "..");
 
 const SPL_WHEEL = "spl-0.1.0-py3-none-any.whl";
 const LARK_VERSION = "1.3.1";

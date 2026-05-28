@@ -40,6 +40,9 @@ dev = [
 
 [tool.ruff]
 target-version = "py313"
+# This is ruff's **import-resolution** root (isort first-party detection), NOT the lint surface.
+# Leaving it as src/ keeps "spl" classified as first-party. The lint surface is narrowed instead
+# via the CLI args in ci.yml (`ruff check src/spl tests`) — see ADR-0010.
 src = ["src", "tests"]
 line-length = 100
 
@@ -47,7 +50,8 @@ line-length = 100
 select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
 
 [tool.pyright]
-include = ["src", "tests"]
+# Post-ADR-0010 src/ is polyglot; scope pyright to the Python package only.
+include = ["src/spl", "tests"]
 pythonVersion = "3.13"
 typeCheckingMode = "strict"
 reportMissingTypeStubs = false
