@@ -7,5 +7,6 @@ public/coi-serviceworker.js
 e2e/artifacts/
 test-results/
 playwright-report/
+coverage/
 .cache/
 *.tsbuildinfo
