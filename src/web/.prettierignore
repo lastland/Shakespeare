@@ -1,0 +1,10 @@
+node_modules
+dist
+public
+coverage
+test-results
+playwright-report
+e2e/artifacts
+*.tsbuildinfo
+package-lock.json
+src/*.spl.txt
