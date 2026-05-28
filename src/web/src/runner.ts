@@ -20,12 +20,24 @@ export interface RunnerCallbacks {
   onDone(): void;
 }
 
+/**
+ * Factory for the Pyodide worker. Production passes the default (a thin arrow around the
+ * Vite-magic `new Worker(new URL("./worker.ts", import.meta.url), { type: "module" })` so
+ * Vite's worker plugin still pattern-matches the literal). Unit tests inject a stub that
+ * records postMessage and synthesises `FromWorker` events.
+ */
+export type WorkerFactory = () => Worker;
+
+const defaultWorkerFactory: WorkerFactory = () =>
+  new Worker(new URL("./worker.ts", import.meta.url), { type: "module" });
+
 export class SplRunner {
   private worker: Worker | null = null;
   private sab: SharedArrayBuffer;
   private ctrl: Int32Array;
   private data: Uint8Array;
   private encoder = new TextEncoder();
+  private workerFactory: WorkerFactory;
 
   // Canned input chunks (used to drive examples / tests deterministically). When the
   // queue is empty we fall back to whatever the UI provides via `provideInput`.
@@ -33,18 +45,17 @@ export class SplRunner {
   private pendingProvide: ((chunk: string | null) => void) | null = null;
   private awaitingInput = false;
 
-  constructor(private cb: RunnerCallbacks) {
+  constructor(private cb: RunnerCallbacks, workerFactory: WorkerFactory = defaultWorkerFactory) {
     this.sab = new SharedArrayBuffer(SAB_BYTES);
     this.ctrl = new Int32Array(this.sab, 0, 2);
     this.data = new Uint8Array(this.sab, 8);
+    this.workerFactory = workerFactory;
     this.spawn();
   }
 
   private spawn() {
     this.cb.onStatus("loading");
-    const worker = new Worker(new URL("./worker.ts", import.meta.url), {
-      type: "module",
-    });
+    const worker = this.workerFactory();
     worker.onmessage = (ev: MessageEvent<FromWorker>) => this.handle(ev.data);
     worker.onerror = (ev) => this.cb.onError(`worker error: ${ev.message}`);
     worker.postMessage({ type: "init", sab: this.sab });

@@ -6,8 +6,6 @@ import { expect, test } from "@playwright/test";
 //   3. Synchronous interactive input round-trip via SharedArrayBuffer + Atomics.
 //   4. Stop = worker terminate + respawn, and a subsequent Run still works.
 
-const READY = "Ready.";
-
 async function waitForReady(page: import("@playwright/test").Page) {
   await expect(page.locator("#status")).toHaveAttribute("data-status", "ready", {
     timeout: 90_000,
@@ -42,7 +40,7 @@ test.describe("SPL playground scaffold", () => {
     // number; read char -> write char. Splitting input across TWO chunks ("A42\n" then
     // "Z") forces TWO synchronous SAB round-trips, proving the Atomics handshake works
     // repeatedly. Proven output: "A42Z".
-    await page.evaluate(() => (window as any).__spl.runEcho());
+    await page.evaluate(() => window.__spl!.runEcho());
 
     await expect(page.locator("#status")).toHaveAttribute("data-status", "waiting-input", {
       timeout: 60_000,
@@ -70,7 +68,7 @@ test.describe("SPL playground scaffold", () => {
     // "Hello" followed by EOF, the proven output is "olleH". This exercises the Send EOF
     // (Ctrl-D) button: the program requests once for "Hello", then requests again where
     // EOF (length = -1 in the SAB) is the natural terminator.
-    await page.evaluate(() => (window as any).__spl.runReverse());
+    await page.evaluate(() => window.__spl!.runReverse());
 
     await expect(page.locator("#status")).toHaveAttribute("data-status", "waiting-input", {
       timeout: 60_000,
@@ -93,7 +91,7 @@ test.describe("SPL playground scaffold", () => {
     await waitForReady(page);
 
     // Start an infinite-loop SPL program, confirm it is running, then Stop.
-    await page.evaluate(() => (window as any).__spl.runInfinite());
+    await page.evaluate(() => window.__spl!.runInfinite());
     await expect(page.locator("#status")).toHaveAttribute("data-status", "running", {
       timeout: 30_000,
     });
@@ -103,7 +101,7 @@ test.describe("SPL playground scaffold", () => {
     await waitForReady(page);
 
     // A fresh Run of hello_world must still work after terminate+respawn.
-    await page.locator("#source").fill((await page.evaluate(() => (window as any).__spl.examples.helloWorld)));
+    await page.locator("#source").fill((await page.evaluate(() => window.__spl!.examples.helloWorld)));
     await page.locator("#run").click();
     await expect(page.locator("#output")).toContainText("Hello World!", {
       timeout: 60_000,

@@ -144,9 +144,10 @@ self.onmessage = async (ev: MessageEvent<ToWorker>) => {
       const emit = (s: string) => post({ type: "stdout", text: s });
       runProgram(msg.source, requestInputSync, emit);
       post({ type: "done" });
-    } catch (err: any) {
+    } catch (err: unknown) {
       // PythonError (and anything else) surfaces here; forward its message.
-      post({ type: "error", text: err?.message ?? String(err) });
+      const message = err instanceof Error ? err.message : String(err);
+      post({ type: "error", text: message });
     }
   }
 };

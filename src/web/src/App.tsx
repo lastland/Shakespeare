@@ -110,8 +110,9 @@ export default function App() {
   }, []);
 
   // Test hooks: expose helpers + raw example sources to Playwright on window.
+  // The window.__spl shape is typed in src/spl-test-hooks.d.ts.
   useEffect(() => {
-    (window as any).__spl = {
+    window.__spl = {
       getStatus: () => status,
       examples: { helloWorld, echoProgram, reverseProgram, infiniteLoop: INFINITE_LOOP },
       // Plumbing tests drive input via Send/SendEof, never canned input -> pass [] so any
