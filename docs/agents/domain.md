@@ -12,7 +12,8 @@ If any of these files don't exist, **proceed silently**. Don't flag their absenc
 
 ## File structure
 
-This repo is **single-context**:
+This repo is **single-context** (the SPL domain), even though `src/` is polyglot since
+[ADR-0010](../adr/0010-polyglot-src-layout-and-web-ci-gating.md):
 
 ```
 /
@@ -21,7 +22,12 @@ This repo is **single-context**:
 │   ├── 0001-event-sourced-orders.md
 │   └── 0002-postgres-for-write-model.md
 └── src/
+    ├── spl/   (Python package)
+    └── web/   (Vite+React+Pyodide playground)
 ```
+
+The polyglot layout is a source-tree fact, not a second context — there is still one domain
+glossary at the root. No `CONTEXT-MAP.md` is needed.
 
 (For reference, a multi-context repo would have a `CONTEXT-MAP.md` at the root pointing to per-context `CONTEXT.md` files, each with its own `docs/adr/`.)
 

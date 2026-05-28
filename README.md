@@ -35,29 +35,44 @@ uv run python -m spl path/to/program.spl # equivalent
 
 ## Architecture
 
+`src/` is polyglot since [ADR-0010](docs/adr/0010-polyglot-src-layout-and-web-ci-gating.md):
+`src/spl/` is the Python package the wheel ships, `src/web/` is the in-browser playground.
+The Python toolchain (pyright, the lint surface) is scoped to `src/spl` explicitly.
+
 ```
-src/spl/
-  errors.py            SplError → ParseError, AnalysisError, RuntimeSplError
-  frontend/
-    grammar.lark       Earley grammar: named keyword terminals + a generic WORD; vocabulary
+src/
+  spl/                 Python package (the wheel)
+    errors.py          SplError → ParseError, AnalysisError, RuntimeSplError
+    frontend/
+      grammar.lark     Earley grammar: named keyword terminals + a generic WORD; vocabulary
                        lives in data files, not the grammar (see ADR-0002)
-    ast.py             frozen @dataclass AST nodes (the frontend/backend boundary)
-    transformer.py     lark tree → AST (purely syntactic)
-    parser.py          parse(source) → Program
-  backend/
-    vocabulary.py      loader for the word-lists
-    data/*.txt         positive/negative/neutral nouns, adjectives, character names
-    analyzer.py        classifies words, folds Constants to Numbers, checks names/gotos →
+      ast.py           frozen @dataclass AST nodes (the frontend/backend boundary)
+      transformer.py   lark tree → AST (purely syntactic)
+      parser.py        parse(source) → Program
+    backend/
+      vocabulary.py    loader for the word-lists
+      data/*.txt       positive/negative/neutral nouns, adjectives, character names
+      analyzer.py      classifies words, folds Constants to Numbers, checks names/gotos →
                        AnalyzedProgram (a flat line list + label maps)
-    state.py           Character (value + LIFO stack), Stage (who is on stage)
-    io.py              IO protocol + StdIO + an in-memory BufferIO test double
-    interpreter.py     tree-walk with a program counter over the AnalyzedProgram
-  cli.py               read file → parse → analyze → interpret
+      state.py         Character (value + LIFO stack), Stage (who is on stage)
+      io.py            IO protocol + StdIO + an in-memory BufferIO test double
+      interpreter.py   tree-walk with a program counter over the AnalyzedProgram
+    cli.py             read file → parse → analyze → interpret
+  web/                 Vite + React + Pyodide playground (see ADRs 0008, 0009, 0010)
 ```
 
 - **Domain glossary:** [`CONTEXT.md`](CONTEXT.md) — the vocabulary the code uses (Character, Stage,
   Speaker/Addressee, Constant, Question, Stack, …).
 - **Decisions:** [`docs/adr/`](docs/adr/) — why the interpreter behaves as it does.
+
+### Web playground
+
+`src/web/` runs the same `spl` wheel in-browser via Pyodide — see
+[ADR-0008](docs/adr/0008-pyodide-in-browser-for-web-playground.md) for why Pyodide and
+[ADR-0009](docs/adr/0009-interactive-stdin-via-sharedarraybuffer.md) for the SharedArrayBuffer
+stdin bridge. Pushes to `main` deploy it to GitHub Pages via
+[`.github/workflows/pages.yml`](.github/workflows/pages.yml):
+<https://lastland.github.io/Shakespeare/>.
 
 ## Supported language
 
@@ -105,10 +120,23 @@ This interpreter now implements every construct the reference defines, including
 ## Development
 
 ```bash
+# Python (src/spl)
 uv run ruff check          # lint
 uv run ruff format         # format
 uv run pyright             # type-check (strict)
 uv run pytest              # the test suite (reference-free)
+```
+
+```bash
+# Web playground (src/web)
+cd src/web
+npm ci                     # install
+npm run dev                # local dev server
+npm run lint               # eslint
+npm run format:check       # prettier
+npm run typecheck          # tsc -b
+npm run test:coverage      # vitest + v8 coverage
+npm run e2e                # playwright (built dist + COOP/COEP)
 ```
 
 The default suite has no dependency on another interpreter. An **opt-in differential harness**
@@ -121,8 +149,10 @@ uv run --with shakespearelang pytest -m differential
 
 CI reports line/branch coverage to [Codecov](https://codecov.io/gh/lastland/Shakespeare)
 (`uv run pytest --cov`). Coverage is measured on the **reference-free suite only**: the differential
-harness re-runs the same programs through the same code, so it adds no marginal coverage. Reporting
-is informational — coverage does not gate merges.
+harness re-runs the same programs through the same code, so it adds no marginal coverage. Web unit
+coverage (vitest + v8) is uploaded from the `web-gate` job in
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) under Codecov flag `web`; the Python coverage
+is under flag `spl`. Reporting is informational — coverage does not gate merges.
 
 Open work and conformance notes are tracked as markdown issues under
 [`.scratch/spl-interpreter/issues/`](.scratch/spl-interpreter/issues/).
