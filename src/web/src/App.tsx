@@ -169,7 +169,12 @@ export default function App() {
       />
 
       <div className="actions">
-        <button id="run" className="btn btn--primary" onClick={() => handleRun()} disabled={status === "loading"}>
+        <button
+          id="run"
+          className="btn btn--primary"
+          onClick={() => handleRun()}
+          disabled={status === "loading"}
+        >
           Run
         </button>
         <button id="stop" className="btn btn--secondary" onClick={handleStop}>

@@ -25,9 +25,7 @@ export const SAB_BYTES = CTRL_BYTES + DATA_BYTES;
 // --- Messages ---------------------------------------------------------------
 
 // main -> worker
-export type ToWorker =
-  | { type: "init"; sab: SharedArrayBuffer }
-  | { type: "run"; source: string };
+export type ToWorker = { type: "init"; sab: SharedArrayBuffer } | { type: "run"; source: string };
 
 // worker -> main
 export type FromWorker =

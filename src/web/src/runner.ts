@@ -45,7 +45,10 @@ export class SplRunner {
   private pendingProvide: ((chunk: string | null) => void) | null = null;
   private awaitingInput = false;
 
-  constructor(private cb: RunnerCallbacks, workerFactory: WorkerFactory = defaultWorkerFactory) {
+  constructor(
+    private cb: RunnerCallbacks,
+    workerFactory: WorkerFactory = defaultWorkerFactory,
+  ) {
     this.sab = new SharedArrayBuffer(SAB_BYTES);
     this.ctrl = new Int32Array(this.sab, 0, 2);
     this.data = new Uint8Array(this.sab, 8);

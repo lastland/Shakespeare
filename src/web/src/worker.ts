@@ -52,8 +52,9 @@ function requestInputSync(): string | null {
   return decoder.decode(bytes);
 }
 
-let runProgram: ((src: string, request: () => string | null, emit: (s: string) => void) => void) | null =
-  null;
+let runProgram:
+  | ((src: string, request: () => string | null, emit: (s: string) => void) => void)
+  | null = null;
 
 // Served-asset prefix. Equals the Vite `base` (e.g. "/" in dev, "/Shakespeare/" on
 // project GitHub Pages), so fetches resolve under a subpath deploy. The Pyodide FS paths

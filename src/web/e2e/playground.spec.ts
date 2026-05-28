@@ -101,7 +101,9 @@ test.describe("SPL playground scaffold", () => {
     await waitForReady(page);
 
     // A fresh Run of hello_world must still work after terminate+respawn.
-    await page.locator("#source").fill((await page.evaluate(() => window.__spl!.examples.helloWorld)));
+    await page
+      .locator("#source")
+      .fill(await page.evaluate(() => window.__spl!.examples.helloWorld));
     await page.locator("#run").click();
     await expect(page.locator("#output")).toContainText("Hello World!", {
       timeout: 60_000,

@@ -129,7 +129,9 @@ body {
   border: 1px solid var(--field-border);
   border-radius: var(--radius);
   padding: 0.4rem 0.6rem;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 /* ---- Editor ------------------------------------------------------------- */
@@ -149,7 +151,9 @@ body {
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   resize: vertical;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 /* ---- Buttons & text input ---------------------------------------------- */
@@ -171,8 +175,11 @@ body {
   border-radius: var(--radius);
   border: 1px solid transparent;
   cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease,
-    color 0.15s ease, transform 0.05s ease;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    transform 0.05s ease;
 }
 
 .btn:active:not(:disabled) {
@@ -212,7 +219,9 @@ body {
   border: 1px solid var(--field-border);
   border-radius: var(--radius);
   padding: 0.5rem 0.7rem;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 /* Keep the placeholder legible (Firefox dims it by default). */
